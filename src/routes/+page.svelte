@@ -13,7 +13,12 @@
   }
 </script>
 
-<main class="container">
+<main class="container mx-auto">
+  <div class="grid grid-flow-row auto-rows-max justify-center">
+    <div>01</div>
+    <div>02</div>
+    <div>03</div>
+  </div>
   <h1>Welcome to Tauri + Svelte</h1>
 
   <div class="row">
@@ -40,10 +45,17 @@
     Hello<br />
     World
   </span>
+  <button class="btn">Button</button>
+  <button class="btn btn-neutral">Neutral</button>
+  <button class="btn btn-primary">Primary</button>
+  <button class="btn btn-secondary">Secondary</button>
+  <button class="btn btn-accent">Accent</button>
+  <button class="btn btn-ghost">Ghost</button>
+  <button class="btn btn-link">Link</button>
 </main>
 
 <style>
-  .logo.vite:hover {
+  /* .logo.vite:hover {
     filter: drop-shadow(0 0 2em #747bff);
   }
 
@@ -159,5 +171,5 @@
     button:active {
       background-color: #0f0f0f69;
     }
-  }
+  } */
 </style>
