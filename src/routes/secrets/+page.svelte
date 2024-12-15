@@ -2,7 +2,7 @@
   let { data } = $props();
 </script>
 
-<h1>Hello</h1>
+<h1>All your secrets are here</h1>
 <div class="overflow-x-auto">
   <table class="table table-zebra">
     <thead>
@@ -15,7 +15,7 @@
     <tbody>
       {#each data.secrets as { id, name, description }}
         <tr>
-          <th>{id}</th>
+          <th><a href="/secrets/{id}">{id}</a></th>
           <td>{name}</td>
           <td>{description}</td>
         </tr>
@@ -23,4 +23,3 @@
     </tbody>
   </table>
 </div>
-<a href="/">Go to access</a>
