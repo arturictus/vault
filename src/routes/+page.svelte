@@ -2,10 +2,18 @@
   import { invoke } from "@tauri-apps/api/core";
   import { enhance } from "$app/forms";
   import { goto } from "$app/navigation";
+  import stronghold from "../lib/stronghold";
 
   let name = $state("");
   let greetMsg = $state("");
 
+  async function init() {
+    const store = await stronghold();
+    let intialized = await store.get("main_password");
+    if (!intialized) {
+      goto("/init");
+    }
+  }
   async function access(event: Event) {
     event.preventDefault();
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
