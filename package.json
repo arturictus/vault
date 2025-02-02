@@ -14,7 +14,13 @@
   "license": "MIT",
   "dependencies": {
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-shell": "^2"
+    "@tauri-apps/plugin-shell": "^2",
+    "flowbite": "^3.1.1",
+    "flowbite-svelte": "^0.47.4",
+    "flowbite-svelte-blocks": "^1.1.4",
+    "flowbite-svelte-icons": "^2.0.2",
+    "flowbite-typography": "^1.0.5",
+    "svelte-meta-tags": "^4.1.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.5",
@@ -22,7 +28,6 @@
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "@tauri-apps/cli": "^2",
     "autoprefixer": "^10.4.20",
-    "daisyui": "^4.12.20",
     "postcss": "^8.4.49",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
