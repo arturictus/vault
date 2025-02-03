@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Label, Input, Checkbox, A, Button, Card } from 'flowbite-svelte';
-	export let title = 'Sign in to platform';
+	export let title = 'Access to your vault';
 	export let site = {
 		name: 'Flowbite',
 		img: '/images/flowbite-svelte-icon-logo.svg',
@@ -50,7 +50,7 @@
 				<Button type="submit" size="lg">{loginTitle}</Button>
 				{#if createAccount}
 					<div class="text-sm font-medium text-gray-500 dark:text-gray-400">
-						Not registered? <A href={registerLink}>{createAccountTitle}</A>
+						First time? <A href={registerLink}>{createAccountTitle}</A>
 					</div>
 				{/if}
 			</form>

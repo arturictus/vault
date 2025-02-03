@@ -1,16 +1,17 @@
 <script>
   import "../app.css";
-  import { ButtonGroup, Button, GradientButton } from 'flowbite-svelte';
+  import { ButtonGroup, Button, GradientButton } from "flowbite-svelte";
   let { data, children } = $props();
 </script>
 
-<div class="layout">
-  <main class="container">
+<main>
+  <div class="layout">
     <ButtonGroup class="*:!ring-primary-700">
       <Button href="/authenticate/log_in">Access</Button>
-      <Button href="/">Set up</Button>
+      <Button href="/">Start page</Button>
       <Button href="/secrets">Secrets</Button>
+      <Button href="/first_setup">First setup</Button>
     </ButtonGroup>
     {@render children()}
-  </main>
-</div>
+  </div>
+</main>

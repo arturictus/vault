@@ -1,22 +1,21 @@
 <script lang="ts">
 	import { Label, Input } from 'flowbite-svelte';
-	import SignIn from '../../../lib/utils/authentication/SignIn.svelte';
-    import MetaTag from '../../../lib/utils/MetaTag.svelte';
+	import SignIn from '$lib/utils/authentication/SignIn.svelte';
     
 	let title = 'Sign in to platform';
 	let site = {
-		name: 'Flowbite',
-		img: '/images/flowbite-svelte-icon-logo.svg',
+		name: 'Vault',
+		img: '/svelte.svg',
 		link: '/',
 		imgAlt: 'FlowBite Logo'
 	};
-	let rememberMe = true;
-	let lostPassword = true;
+	let rememberMe = false;
+	let lostPassword = false;
 	let createAccount = true;
 	let lostPasswordLink = 'forgot-password';
-	let loginTitle = 'Login to your account';
-	let registerLink = 'sign-up';
-	let createAccountTitle = 'Create account';
+	let loginTitle = 'Access';
+	let registerLink = '/first_setup';
+	let createAccountTitle = 'Setup';
 
 	const onSubmit = (e: Event) => {
 		const formData = new FormData(e.target as HTMLFormElement);
@@ -28,14 +27,7 @@
 		}
 		console.log(data);
 	};
-
-	const path: string = '/authentication/sign-in';
-  const description: string = 'Sign in example - Flowbite Svelte Admin Dashboard';
-	const metaTitle: string = 'Flowbite Svelte Admin Dashboard - Sign in';
-  const subtitle: string = 'Sign in';
 </script>
-
-<MetaTag {path} {description} title={metaTitle} {subtitle} />
 
 <SignIn
 	{title}
@@ -49,17 +41,6 @@
 	{createAccountTitle}
 	on:submit={onSubmit}
 >
-	<div>
-		<Label for="email" class="mb-2 dark:text-white">Your email</Label>
-		<Input
-			type="email"
-			name="email"
-			id="email"
-			placeholder="name@company.com"
-			required
-			class="border outline-none dark:border-gray-600 dark:bg-gray-700"
-		/>
-	</div>
 	<div>
 		<Label for="password" class="mb-2 dark:text-white">Your password</Label>
 		<Input
