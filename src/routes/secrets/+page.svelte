@@ -151,9 +151,9 @@
     <TableBody class="divide-y">
       {#if searchTerm}
         {#each filteredItems as item (item.id)}
-          <TableBodyRow>
+          <TableBodyRow on:click={() => goto(`/secrets/${item.id}`)}>
             <TableBodyCell tdClass="px-4 py-3">{item.name}</TableBodyCell>
-            <TableBodyCell tdClass="px-4 py-3">{item.type}</TableBodyCell>
+            <TableBodyCell tdClass="px-4 py-3">{item.kind}</TableBodyCell>
             <TableBodyCell tdClass="px-4 py-3">{item.description}</TableBodyCell
             >
             <TableBodyCell tdClass="px-4 py-3">{item.security}</TableBodyCell>
@@ -161,9 +161,9 @@
         {/each}
       {:else}
         {#each currentPageItems as item (item.id)}
-          <TableBodyRow>
+          <TableBodyRow on:click={() => goto(`/secrets/${item.id}`)}>
             <TableBodyCell tdClass="px-4 py-3">{item.name}</TableBodyCell>
-            <TableBodyCell tdClass="px-4 py-3">{item.type}</TableBodyCell>
+            <TableBodyCell tdClass="px-4 py-3">{item.kind}</TableBodyCell>
             <TableBodyCell tdClass="px-4 py-3">{item.description}</TableBodyCell
             >
             <TableBodyCell tdClass="px-4 py-3">{item.security}</TableBodyCell>
