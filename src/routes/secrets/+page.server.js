@@ -7,3 +7,9 @@ export function load() {
     ]
   };
 }
+
+// import { invoke } from '@tauri-apps/api/core';
+// export async function load() {
+//   const secrets = await invoke('get_secrets');
+//   return { secrets };
+// }

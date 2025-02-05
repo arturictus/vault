@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import {
     Table,
     TableBody,
@@ -129,7 +130,7 @@
       slot="header"
       class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0"
     >
-      <Button>
+      <Button color="primary" on:click={() => goto("/secrets/create")}>
         <PlusOutline class="h-3.5 w-3.5 mr-2" />Add
       </Button>
       <Button color="alternative"
