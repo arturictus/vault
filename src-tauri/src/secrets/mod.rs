@@ -1,8 +1,11 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use uuid::Uuid;
 
-use crate::file_system;
 use crate::encrypt;
+use crate::file_system;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct SecretForm {
@@ -20,14 +23,12 @@ pub struct Secret {
 }
 
 pub struct Vault {
-    name: String
+    name: String,
 }
 
 impl Vault {
     pub fn new(name: String) -> Self {
-        Self {
-            name
-        }
+        Self { name }
     }
     pub fn path(&self) -> PathBuf {
         Path::new(&file_system::vault_folder(&self.name)).to_path_buf()
@@ -49,45 +50,54 @@ pub fn create_secret(data: SecretForm) -> Result<String, String> {
         id: Uuid::new_v4().to_string(),
         kind: data.kind,
         name: data.name,
-        value: data.value
+        value: data.value,
     };
     let json: String = serde_json::to_string(&secret).map_err(|e| e.to_string())?;
     let pk_path = vault.pk_path();
-    let encrypted = encrypt::encrypt_string(&pk_path.as_path(), &json).map_err(|e| e.to_string())?;
+    let encrypted =
+        encrypt::encrypt_string(&pk_path.as_path(), &json).map_err(|e| e.to_string())?;
     let out_path = vault.secret_path(&secret.id);
     fs::write(out_path, encrypted).map_err(|e| e.to_string())?;
     Ok("Submitted secret".to_string())
 }
 
 #[tauri::command]
-pub fn get_secrets() -> Result<Vec<Secret>, String> {
-    Ok(vec![
-        Secret {
-            id: "1".to_string(),
-            kind: "login".to_string(),
-            name: "secret1".to_string(),
-            value: "password".to_string(),
-        },
-        Secret {
-            id: "2".to_string(),
-            kind: "login".to_string(),
-            name: "secret2".to_string(),
-            value: "password".to_string(),
-        },
-        Secret {
-            id: "3".to_string(),
-            kind: "login".to_string(),
-            name: "secret3".to_string(),
-            value: "password".to_string(),
-        },
-    ])
+pub fn get_secret(id: &str) -> Result<Secret, String> {
+    let vault = Vault::new("default".to_string());
+    let pk_path = vault.pk_path();
+    let secret_path = vault.secret_path(id);
+    let encrypted = fs::read_to_string(secret_path).map_err(|e| e.to_string())?;
+    let decrypted =
+        encrypt::decrypt_string(&pk_path.as_path(), &encrypted).map_err(|e| e.to_string())?;
+    let secret: Secret = serde_json::from_str(&decrypted).map_err(|e| e.to_string())?;
+    Ok(secret)
 }
 
 #[tauri::command]
-pub fn get_secret(id: String) -> Result<Secret, String> {
-    get_secrets()
-        .unwrap()
-        .into_iter()
-        .find(|secret| secret.id == id)
-        .ok_or_else(|| "Secret not found".to_string())
+pub fn get_secrets() -> Result<Vec<Secret>, String> {
+    let vault = Vault::new("default".to_string());
+    let pk_path = vault.pk_path();
+    let secret_dir = vault.path();
+    println!("Secret dir: {:?}", secret_dir);
+    let mut secrets = vec![];
+    for entry in fs::read_dir(secret_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry.path().is_dir()
+            && entry
+                .path()
+                .extension()
+                .map(|s| s == "enc")
+                .unwrap_or(false)
+        {
+            println!("This is an enc file");
+            let path = entry.path();
+            println!("Path to file: {:?}", path);
+            let encrypted = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+            let decrypted = encrypt::decrypt_string(&pk_path.as_path(), &encrypted)
+                .map_err(|e| e.to_string())?;
+            let secret: Secret = serde_json::from_str(&decrypted).map_err(|e| e.to_string())?;
+            secrets.push(secret);
+        }
+    }
+    Ok(secrets)
 }

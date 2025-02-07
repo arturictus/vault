@@ -11,3 +11,8 @@ pub fn encrypt_string(pk_path: &Path, input: &str) -> Result<String, Box<dyn Err
     let encryptor = rsa::Encryptor::from_file(pk_path)?;
     encryptor.encrypt_string(input)
 }
+
+pub fn decrypt_string(pk_path: &Path, input: &str) -> Result<String, Box<dyn Error>> {
+    let encryptor = rsa::Encryptor::from_file(pk_path)?;
+    encryptor.decrypt_string(input)
+}
