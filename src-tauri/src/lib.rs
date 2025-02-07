@@ -38,7 +38,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             file_system::init().map_err(|e| AppError { message: format!("Failed to initialize file system: {}", e) })?;
-            let app_dir = file_system::application_data_directory();
+            let app_dir = file_system::app_data_directory();
             let scope = app.fs_scope();
             scope.allow_directory(&app_dir, false)?;
             Ok(())
@@ -49,8 +49,7 @@ pub fn run() {
             authenticate,
             secrets::create_secret,
             secrets::get_secrets,
-            secrets::get_secret,
-            encrypt::create_new_rsa_key
+            secrets::get_secret
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

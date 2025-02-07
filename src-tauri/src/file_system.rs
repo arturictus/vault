@@ -1,17 +1,47 @@
+use std::path::{Path, PathBuf};
+
 use dirs;
 
-pub fn application_data_directory() -> String {
-    dirs::home_dir().map(|home| home.join(".vault").join("app-data").to_string_lossy().to_string()).unwrap()
+pub fn app_data_directory() -> String {
+    main_folder().join("app-data").to_string_lossy().to_string()
+}
+pub fn vaults_folder() -> String {
+    main_folder().join("vaults").to_string_lossy().to_string()
 }
 
-pub fn pks_folder() -> String {
-    dirs::home_dir().map(|home| home.join(".vault").join("pks").to_string_lossy().to_string()).unwrap()
+// pub fn pks_folder() -> String {
+//     main_folder().join("pks").to_string_lossy().to_string()
+// }
+pub fn pk_for_vault(vault_name: &str) -> String {
+    Path::new(&vault_folder(vault_name)).join("private_key").to_string_lossy().to_string()
+}
+
+pub fn vault_folder(vault_name: &str) -> String {
+    let vault_folder = format!("{}.vault", vault_name);
+    Path::new(&vaults_folder()).join(vault_folder).to_string_lossy().to_string()
+}
+
+pub fn create_vault_folder(vault_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let folder = vault_folder(vault_name);
+    std::fs::create_dir_all(&folder)?;
+    Ok(())
+}
+
+pub fn main_folder() -> PathBuf {
+    dirs::home_dir().map(|home| home.join(".vault")).unwrap()
 }
 
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
-    let app_dir = application_data_directory();
-    let pks_dir = pks_folder();
+    let app_dir = app_data_directory();
     std::fs::create_dir_all(&app_dir)?;
-    std::fs::create_dir_all(&pks_dir)?;
+    let vaults_dir = vaults_folder();
+    std::fs::create_dir_all(&vaults_dir)?;
+    let default_vault_dir = vault_folder("default");
+    std::fs::create_dir_all(&default_vault_dir)?;
+    let pk_for_default_vault = pk_for_vault("default");
+    let pk_for_default_path = Path::new(&pk_for_default_vault);
+    if !pk_for_default_path.exists() {
+        crate::encrypt::create_pk_at_path(&pk_for_default_path)?;
+    }
     Ok(())
 }

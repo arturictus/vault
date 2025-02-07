@@ -8,7 +8,7 @@
     const handleSubmit = async (event: { preventDefault: () => void; }) => {
         event.preventDefault();
         console.log(name);
-        await invoke("create_new_rsa_key", { name });
+        // await invoke("create_new_rsa_key", { name });
         goto("/settings");
     };
 </script>
