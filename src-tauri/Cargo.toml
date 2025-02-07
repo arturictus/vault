@@ -29,4 +29,5 @@ base64 = "0.21"
 tempfile = "3.8"
 tauri-plugin-fs = "2"
 dirs = "6.0.0"
+uuid = "1.13.1"
 
