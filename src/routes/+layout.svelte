@@ -11,6 +11,8 @@
       <Button href="/">Start page</Button>
       <Button href="/secrets">Secrets</Button>
       <Button href="/first_setup">First setup</Button>
+      <Button href="/settings/new_pk">New PK</Button>
+      <Button href="/settings">Settings</Button>
     </ButtonGroup>
     {@render children()}
   </div>
