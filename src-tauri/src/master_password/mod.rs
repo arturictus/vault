@@ -1,21 +1,30 @@
 mod password_encryptor;
 use password_encryptor::PasswordEncryptor;
 use std::{error::Error, fs};
-use crate::file_system;
-
+use crate::{file_system, AppState};
+use tauri::State;
+use std::sync::Mutex;
 #[tauri::command]
-pub fn save_master_password(password: &str) -> Result<String, String> {
+pub fn save_master_password(state: State<'_, Mutex<AppState>>, password: &str) -> Result<String, String> {
     let encryptor = PasswordEncryptor::new(password);
     let encrypted = encryptor.encrypt(password.as_bytes()).map_err(|e| e.to_string())?;
     let path = file_system::master_password();
     fs::write(path, encrypted).map_err(|e| e.to_string())?;
+    let mut state= state.lock().map_err(|e| e.to_string())?;
+    state.master_password = Some(password.to_string());
+    state.authenticated = true;
+
     Ok("Master password saved".to_string())
 }
 
 #[tauri::command]
-pub fn verify_master_password(password: &str) -> Result<String, String> {
+pub fn verify_master_password(state: State<'_, Mutex<AppState>>,password: &str) -> Result<String, String> {
     match do_verify_password(password) {
-        Ok(_) => Ok("Master password correct".to_string()),
+        Ok(_) =>{ 
+            let mut state = state.lock().map_err(|e| e.to_string())?;
+            state.master_password = Some(password.to_string());
+            state.authenticated = true;
+            Ok("Master password correct".to_string())},
         Err(_) => Err("Master password incorrect".to_string())   
     }
 }

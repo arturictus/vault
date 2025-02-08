@@ -10,10 +10,33 @@ use std::sync::Mutex;
 
 use tauri::{Builder, Manager};
 
-#[derive(Default)]
+
 struct AppState {
-    master_password: String,
+    master_password: Option<String>,
+    authenticated: bool,
 }
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            master_password: None,
+            authenticated: false,
+        }
+    }
+    
+}
+
+
+#[tauri::command]
+fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, String> {
+  let state = state.lock().map_err(|e| e.to_string())?;
+    if state.authenticated {
+        return Ok(true);
+    } else {
+        return Ok(false);
+    }
+}
+
 
 #[derive(Debug)]
 struct AppError {
@@ -27,17 +50,6 @@ impl fmt::Display for AppError {
 }
 
 impl Error for AppError {}
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-fn authenticate(password: &str) -> bool {
-    password == "password"
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -58,11 +70,12 @@ pub fn run() {
         })
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
-            authenticate,
+            is_authenticated,
             secrets::create_secret,
             secrets::get_secrets,
-            secrets::get_secret
+            secrets::get_secret,
+            master_password::save_master_password,
+            master_password::verify_master_password,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
