@@ -1,17 +1,23 @@
-use dirs;
-use serde::de;
 use std::error::Error;
 use std::fmt;
 use tauri_plugin_fs::FsExt;
 mod encrypt;
 mod file_system;
-mod secrets;
 mod master_password;
-use std::fs;
+mod secrets;
+
+use std::sync::Mutex;
+
+use tauri::{Builder, Manager};
+
+#[derive(Default)]
+struct AppState {
+    master_password: String,
+}
 
 #[derive(Debug)]
 struct AppError {
-    message: String
+    message: String,
 }
 
 impl fmt::Display for AppError {
@@ -36,9 +42,15 @@ fn authenticate(password: &str) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            app.manage(Mutex::new(AppState::default()));
+            Ok(())
+        })
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
-            file_system::init().map_err(|e| AppError { message: format!("Failed to initialize file system: {}", e) })?;
+            file_system::init().map_err(|e| AppError {
+                message: format!("Failed to initialize file system: {}", e),
+            })?;
             let app_dir = file_system::app_data_directory();
             let scope = app.fs_scope();
             scope.allow_directory(&app_dir, false)?;
