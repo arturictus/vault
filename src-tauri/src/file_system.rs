@@ -16,6 +16,10 @@ pub fn pk_for_vault(vault_name: &str) -> String {
     Path::new(&vault_folder(vault_name)).join("private_key").to_string_lossy().to_string()
 }
 
+pub fn master_password() -> String {
+    main_folder().join("master_password.enc").to_string_lossy().to_string()
+}
+
 pub fn vault_folder(vault_name: &str) -> String {
     let vault_folder = format!("{}.vault", vault_name);
     Path::new(&vaults_folder()).join(vault_folder).to_string_lossy().to_string()

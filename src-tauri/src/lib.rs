@@ -6,6 +6,7 @@ use tauri_plugin_fs::FsExt;
 mod encrypt;
 mod file_system;
 mod secrets;
+mod master_password;
 use std::fs;
 
 #[derive(Debug)]
