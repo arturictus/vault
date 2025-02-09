@@ -10,7 +10,6 @@ use std::sync::Mutex;
 
 use tauri::{Builder, Manager};
 
-
 struct AppState {
     master_password: Option<String>,
     authenticated: bool,
@@ -23,20 +22,18 @@ impl Default for AppState {
             authenticated: false,
         }
     }
-    
 }
-
 
 #[tauri::command]
 fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, String> {
-  let state = state.lock().map_err(|e| e.to_string())?;
+    println!("Checking if authenticated");
+    let state = state.lock().map_err(|e| e.to_string())?;
     if state.authenticated {
         return Ok(true);
     } else {
         return Ok(false);
     }
 }
-
 
 #[derive(Debug)]
 struct AppError {
@@ -55,20 +52,20 @@ impl Error for AppError {}
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            // Initialize AppState first
             app.manage(Mutex::new(AppState::default()));
-            Ok(())
-        })
-        .plugin(tauri_plugin_fs::init())
-        .setup(|app| {
+
+            // Initialize file system
             file_system::init().map_err(|e| AppError {
                 message: format!("Failed to initialize file system: {}", e),
             })?;
+
             let app_dir = file_system::app_data_directory();
             let scope = app.fs_scope();
             scope.allow_directory(&app_dir, false)?;
+
             Ok(())
         })
-        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             is_authenticated,
             secrets::create_secret,
@@ -77,6 +74,8 @@ pub fn run() {
             master_password::save_master_password,
             master_password::verify_master_password,
         ])
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
