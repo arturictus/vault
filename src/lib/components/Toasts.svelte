@@ -3,6 +3,7 @@
     import { Toast } from "flowbite-svelte";
     import { getToasts } from "$lib/stores/toast.svelte";
     let toasts = getToasts();
+    console.log(toasts);
 </script>
 
 {#each toasts as toast (toast.id)}
@@ -14,7 +15,7 @@
         {toast.message}
     </Toast>
 {/each} -->
-<!-- <script lang="ts">
+<script lang="ts">
     // TODO: not working
     import { getToasts } from '$lib/stores/toast.svelte';
     let toasts = getToasts();
@@ -49,4 +50,4 @@
     .toast-error { background: #F44336; color: white; }
     .toast-info { background: #2196F3; color: white; }
     .toast-warning { background: #FF9800; color: white; }
-</style> -->
+</style>
