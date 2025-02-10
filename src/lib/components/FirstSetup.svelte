@@ -40,7 +40,7 @@
 ••••••••
 ••••••••
 -----END OPENSSH PRIVATE KEY-----"
-                    rows=4
+                    rows=6
                     name="description"
                     required
                 />
