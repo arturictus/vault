@@ -17,7 +17,7 @@
     import { invoke } from "@tauri-apps/api/core";
     import AppState from "$lib/AppState.svelte";
     // TODO: move to layout
-    import { addToast } from "$lib/stores/toast";
+    import { addToast } from "$lib/stores/toast.svelte";
     import Toasts from "./Toasts.svelte";
 
     let title = "Access your safe zone";
@@ -87,14 +87,10 @@
             <Button type="submit" size="lg">{loginTitle}</Button>
 
             <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                First time? <a
-                    href="/"
-                    role="button"
-                    onclick={setupFn}
-                    onkeydown={(e) => e.key === 'Enter' && setupFn(e)}
-                    class="text-primary-600 hover:underline dark:text-primary-500"
-                    tabindex="0"
-                >Setup</a>
+                First time? <span
+                    class="text-primary-700 dark:text-blue-500 hover:underline cursor-pointer font-medium"
+                    onclick={setupFn}>Setup</span
+                >
             </div>
         </form>
     </Card>

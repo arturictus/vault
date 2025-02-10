@@ -1,7 +1,8 @@
 <!-- <script>
     import { CloseCircleSolid } from "flowbite-svelte";
     import { Toast } from "flowbite-svelte";
-    import { toasts } from "$lib/stores/toast";
+    import { getToasts } from "$lib/stores/toast.svelte";
+    let toasts = getToasts();
 </script>
 
 {#each toasts as toast (toast.id)}
@@ -13,8 +14,10 @@
         {toast.message}
     </Toast>
 {/each} -->
-<script lang="ts">
-    import { toasts } from '../stores/toast';
+<!-- <script lang="ts">
+    // TODO: not working
+    import { getToasts } from '$lib/stores/toast.svelte';
+    let toasts = getToasts();
 </script>
 
 <div class="toast-container">
@@ -46,4 +49,4 @@
     .toast-error { background: #F44336; color: white; }
     .toast-info { background: #2196F3; color: white; }
     .toast-warning { background: #FF9800; color: white; }
-</style>
+</style> -->

@@ -23,4 +23,6 @@ export function addToast(
     }, duration);
 }
 
-export { toasts };
+export function getToasts() {
+    return toasts;
+}
