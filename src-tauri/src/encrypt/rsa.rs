@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::rngs::OsRng;
 use rsa::{
-    pkcs8::{DecodePrivateKey, EncodePrivateKey, LineEnding},
+    pkcs8::{DecodePrivateKey, EncodePrivateKey, LineEnding, EncodePublicKey},
     Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
 };
 use std::error::Error;
@@ -9,8 +9,8 @@ use std::fs;
 use std::path::Path;
 
 pub struct Encryptor {
-    private_key: RsaPrivateKey,
-    public_key: RsaPublicKey,
+    pub private_key: RsaPrivateKey,
+    pub public_key: RsaPublicKey,
 }
 
 impl Encryptor {
@@ -27,7 +27,11 @@ impl Encryptor {
 
     pub fn from_file(path: &Path) -> Result<Self, Box<dyn Error>> {
         let pem = fs::read_to_string(path)?;
-        let private_key = RsaPrivateKey::from_pkcs8_pem(&pem)?;
+        Self::from_string(&pem)
+    }
+
+    pub fn from_string(pem: &str) -> Result<Self, Box<dyn Error>> {
+        let private_key = RsaPrivateKey::from_pkcs8_pem(pem)?;
         let public_key = RsaPublicKey::from(&private_key);
 
         Ok(Self {
@@ -40,6 +44,16 @@ impl Encryptor {
         let pem = self.private_key.to_pkcs8_pem(LineEnding::LF)?;
         fs::write(path, pem.as_bytes())?;
         Ok(())
+    }
+
+    pub fn private_key_pem(&self) -> Result<String, Box<dyn Error>> {
+        let pem = self.private_key.to_pkcs8_pem(LineEnding::LF)?;
+        Ok(pem.to_string())
+    }
+
+    pub fn public_key_pem(&self) -> Result<String, Box<dyn Error>> {
+        let pem = self.public_key.to_public_key_pem(LineEnding::LF)?;
+        Ok(pem)
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -92,5 +106,13 @@ mod tests {
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = loaded_encryptor.decrypt_string(&encrypted).unwrap();
         assert_eq!(original, decrypted);
+    }
+
+    #[test]
+    fn test_public_key_to_pem() {
+        let encryptor = Encryptor::new().unwrap();
+        let public_key_pem = encryptor.public_key_pem().unwrap();
+        assert!(public_key_pem.starts_with("-----BEGIN PUBLIC KEY-----"));
+        assert!(public_key_pem.ends_with("-----END PUBLIC KEY-----\n"));
     }
 }
