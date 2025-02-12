@@ -18,7 +18,6 @@
     import AppState from "$lib/AppState.svelte";
     // TODO: move to layout
     import { addToast } from "$lib/stores/toast.svelte";
-    import Toasts from "./Toasts.svelte";
 
     let title = "Access your safe zone";
     let site = {
@@ -58,7 +57,6 @@
 </script>
 
 <div class={mainDivClass}>
-    <Toasts />
 
     <a href={site.link} class={siteLinkClass}>
         <img src={site.img} class={siteImgClass} alt={site.imgAlt} />

@@ -6,7 +6,6 @@
     import appState from "$lib/AppState.svelte";
     // TODO: move to layout
     import { addToast } from "$lib/stores/toast.svelte";
-    import Toasts from "./Toasts.svelte";
     let password = $state();
     let password_confirmation = $state();
     let private_key = $state("");
