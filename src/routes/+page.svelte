@@ -16,10 +16,7 @@
     "mb-3 text-2xl font-bold leading-tight text-gray-900 sm:text-4xl lg:text-5xl dark:text-white";
   export let imgDiv = "block mb-5 md:max-w-md";
   export let div2Class = "text-center xl:max-w-4xl";
-  import AppState, { initPromise } from "$lib/AppState.svelte";
-
-  // Wait for AppState to initialize
-  const ready = initPromise.then(() => true);
+  
 </script>
 
 <main class={mainClass}>
@@ -27,11 +24,7 @@
     <div class={imgDiv}>
       <img src={image.src} alt={image.alt} />
     </div>
-    {#await AppState}
-      <div>Loading...</div>
-    {:then}
-      <slot />
-    {/await}
+
 
     <div class={div2Class}>
       <h1 class={h1Class}>{title}</h1>
@@ -41,11 +34,7 @@
       >
         {@html description}
       </P>
-      {#if AppState.isAuthenticated()}
-        <Button href="/secrets">Settings</Button>
-      {:else}
-        <Button href="/authenticate/log_in">Setup</Button>
-      {/if}
+     
     </div>
   </div>
 </main>

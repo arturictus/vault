@@ -8,7 +8,7 @@
   // Wait for AppState to initialize
   const ready = initPromise.then(() => true);
   let { data, children } = $props();
-  let authenticated = false || AppState.isAuthenticated();
+  let authenticated = true || AppState.isAuthenticated();
   let setup_page = $state(false);
 </script>
 {#await AppState}
