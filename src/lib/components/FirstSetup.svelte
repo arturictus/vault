@@ -5,30 +5,33 @@
     import { invoke } from "@tauri-apps/api/core";
     import appState from "$lib/AppState.svelte";
     // TODO: move to layout
-    import { addToast } from "$lib/stores/toast.svelte";
+    import { getToastState } from "$lib/stores/toaster-state.svelte";
+    import Toaster from "./Toaster.svelte";
     let password = $state();
     let password_confirmation = $state();
     let private_key = $state("");
+    const toastState = getToastState();
 
     const handleSubmit = () => {
         if (password !== password_confirmation) {
-            addToast("Passwords do not match");
+            toastState.add("Passwords do not match", "error");
             password = "";
             password_confirmation = "";
             return;
         }
         invoke("save_master_password", { password, private_key }).then(async () => {
             await appState.refreshAuthState();
-            addToast("Password saved");
+            toastState.add("Password saved", "cool");
+            // addToast("Password saved");
             goto("/secrets");
         }).catch((e) => {
-            addToast("Error saving password");
+            toastState.add("Error saving password", "error");
         });
     };
 </script>
 
 <Section name="crudcreateform">
-    <Toasts />
+    <Toaster />
     <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
         Initial Settings
     </h2>

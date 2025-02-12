@@ -17,8 +17,8 @@
     import { invoke } from "@tauri-apps/api/core";
     import AppState from "$lib/AppState.svelte";
     // TODO: move to layout
-    import { addToast } from "$lib/stores/toast.svelte";
-
+    import { getToastState } from "$lib/stores/toaster-state.svelte";
+    import Toaster from "./Toaster.svelte";
     let title = "Access your safe zone";
     let site = {
         name: "Vault",
@@ -33,17 +33,19 @@
     let cardH1Class = "text-2xl font-bold text-gray-900 dark:text-white";
 
     let main_password = $state("");
+    let toastState = getToastState();
     const onSubmit = async (e: Event) => {
         e.preventDefault();
         await invoke("verify_master_password", { password: main_password })
             .catch((e) => {
-                addToast("Wrong password");
+                toastState.add("Wrong password", "error");
             })
             .then(async (res) => {
                 try {
                     await AppState.refreshAuthState();
                 } catch (e) {
-                    addToast("Error refreshing auth state");
+                    toastState.add("Error refreshing auth state", "error");
+                    // addToast("Error refreshing auth state");
                 }
             });
     };
@@ -57,7 +59,7 @@
 </script>
 
 <div class={mainDivClass}>
-
+   <Toaster />
     <a href={site.link} class={siteLinkClass}>
         <img src={site.img} class={siteImgClass} alt={site.imgAlt} />
         <span>{site.name}</span>

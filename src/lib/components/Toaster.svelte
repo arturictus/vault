@@ -1,21 +1,20 @@
-<!-- <script>
-    import { CloseCircleSolid } from "flowbite-svelte";
-    import { Toast } from "flowbite-svelte";
-    import { getToasts } from "$lib/stores/toast.svelte";
-    let toasts = getToasts();
+<script>
+    // import { CloseCircleSolid } from "flowbite-svelte";
+    // import { Toast } from "flowbite-svelte";
+    import { getToastState } from '$lib/stores/toaster-state.svelte';
+    let toastState = getToastState();
     console.log(toasts);
 </script>
 
-{#each toasts as toast (toast.id)}
-    <Toast color="red">
-        <svelte:fragment slot="icon">
-            <CloseCircleSolid class="w-5 h-5" />
-            <span class="sr-only">Error icon</span>
-        </svelte:fragment>
-        {toast.message}
-    </Toast>
-{/each} -->
-<script lang="ts">
+<div class="absolute top-2 right-2 flex flex-col">
+    {#each toastState.toasts as toast (toast.id)}
+        <div class="toast">
+            {toast.message}
+        </div>
+    {/each}
+</div>
+
+<!-- <script lang="ts">
     // TODO: not working
     import { getToasts } from '$lib/stores/toast.svelte';
     let toasts = getToasts();
@@ -23,7 +22,7 @@
 
 <div class="toast-container">
     {#each toasts as toast (toast.id)}
-        <div class="toast" class:toast-{toast.type}>
+        <div class="toast">
             {toast.message}
         </div>
     {/each}
@@ -50,4 +49,4 @@
     .toast-error { background: #F44336; color: white; }
     .toast-info { background: #2196F3; color: white; }
     .toast-warning { background: #FF9800; color: white; }
-</style>
+</style> -->

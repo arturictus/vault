@@ -4,7 +4,8 @@
   import AppState, { initPromise } from "$lib/AppState.svelte";
   import MasterPassword from "$lib/components/MasterPassword.svelte";
   import FirstSetup from "$lib/components/FirstSetup.svelte";
-
+  import { setToastState } from '$lib/stores/toaster-state.svelte';
+  setToastState();
   // Wait for AppState to initialize
   const ready = initPromise.then(() => true);
   let { data, children } = $props();
