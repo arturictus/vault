@@ -8,13 +8,13 @@
   // Wait for AppState to initialize
   const ready = initPromise.then(() => true);
   let { data, children } = $props();
-  let authenticated = false || AppState.isAuthenticated();
+  let authenticated = AppState.isAuthenticated();
   let setup_page = $state(false);
 </script>
 {#await AppState}
   <div>Loading...</div>
 {:then}
-  {#if authenticated}
+  {#if AppState.isAuthenticated()}
     <main>
       {@render children()}
       <ButtonGroup class="*:!ring-primary-700">

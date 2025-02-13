@@ -18,6 +18,7 @@
     import AppState from "$lib/AppState.svelte";
     // TODO: move to layout
     import { addToast } from "$lib/stores/toast.svelte";
+    import { goto } from "$app/navigation";
 
     let title = "Access your safe zone";
     let site = {
@@ -37,11 +38,14 @@
         e.preventDefault();
         await invoke("verify_master_password", { password: main_password })
             .catch((e) => {
+                main_password = ""
                 addToast("Wrong password");
             })
             .then(async (res) => {
+                main_password = ""
                 try {
                     await AppState.refreshAuthState();
+                    if (AppState.isAuthenticated()) { goto("/secrets") }
                 } catch (e) {
                     addToast("Error refreshing auth state");
                 }

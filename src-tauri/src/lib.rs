@@ -29,8 +29,10 @@ fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, St
     println!("Checking if authenticated");
     let state = state.lock().map_err(|e| e.to_string())?;
     if state.authenticated {
-        return Ok(true);
+        println!("====> true");
+        return Ok(true)
     } else {
+        println!("====> false");
         return Ok(false);
     }
 }

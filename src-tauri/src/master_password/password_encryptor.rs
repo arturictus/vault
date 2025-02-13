@@ -1,13 +1,21 @@
-use std::num::NonZeroU32;
-use std::fmt;
-use std::error::Error as StdError;
-use ring::{digest, pbkdf2};
 use aes_gcm::{
     aead::{Aead, KeyInit},
-    Aes256Gcm, Nonce
+    Aes256Gcm, Nonce,
 };
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::{rngs::OsRng, RngCore};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use ring::{digest, pbkdf2};
+use std::error::Error as StdError;
+use std::fmt;
+use std::num::NonZeroU32;
+impl StdError for EncryptionError {}
+
+use rand::{thread_rng};
+use crypto::{buffer::{BufferResult, ReadBuffer, WriteBuffer}, aes::ecb_encryptor, blockmodes::NoPadding, aes::ecb_decryptor};
+use crypto::buffer::{RefReadBuffer, RefWriteBuffer};
+use crypto::aes::KeySize::KeySize256;
+use crypto::digest::Digest;
+use crypto::sha3::Sha3;
 
 static PBKDF2_ALG: pbkdf2::Algorithm = pbkdf2::PBKDF2_HMAC_SHA256;
 const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
@@ -30,78 +38,118 @@ impl fmt::Display for EncryptionError {
     }
 }
 
-impl StdError for EncryptionError {}
+
 
 #[derive(Debug)]
 pub struct PasswordEncryptor {
-    key: Vec<u8>,
+    key: [u8; 32],
+    salt: [u8; 16],
 }
 
 impl PasswordEncryptor {
-    /// Creates a new PasswordEncryptor from a password
     pub fn new(password: &str) -> Self {
         let salt = Self::generate_salt();
-        let mut key = vec![0u8; CREDENTIAL_LEN];
-        
-        pbkdf2::derive(
-            PBKDF2_ALG,
-            NonZeroU32::new(PBKDF2_ITERATIONS).unwrap(),
-            &salt,
-            password.as_bytes(),
-            &mut key,
-        );
-
-        Self { key }
+        let key = Self::derive_key(password, &salt);
+        Self { key, salt }
     }
 
-    /// Encrypts data using the derived key
+    pub fn from_salt(password: &str, salt: &[u8]) -> Self {
+        let mut salt_array = [0u8; 16];
+        salt_array.copy_from_slice(salt);
+        let key = Self::derive_key(password, &salt_array);
+        Self { key, salt: salt_array }
+    }
+
+    pub fn from_encrypted(password: &str, encrypted: &str) -> Result<Self, EncryptionError> {
+        let data = BASE64.decode(encrypted.as_bytes())
+            .map_err(|e| EncryptionError::Base64(e.to_string()))?;
+        if data.len() < 16 {
+            return Err(EncryptionError::Decryption(
+                "Invalid encrypted data length".to_string(),
+            ));
+        }
+
+        // Split into salt and encrypted data
+        let (salt, _) = data.split_at(16);
+        let mut salt_array = [0u8; 16];
+        salt_array.copy_from_slice(salt);
+        Ok(Self::from_salt(password, &salt_array))
+    }
+
+    fn generate_salt() -> [u8; 16] {
+        let mut salt = [0u8; 16];
+        thread_rng().fill_bytes(&mut salt);
+        salt
+    }
+
+    fn derive_key(password: &str, salt: &[u8]) -> [u8; 32] {
+        let mut hasher = Sha3::sha3_256();
+        hasher.input(password.as_bytes());
+        hasher.input(salt);
+        let mut key = [0u8; 32];
+        hasher.result(&mut key);
+        key
+    }
+
     pub fn encrypt(&self, data: &[u8]) -> Result<String, EncryptionError> {
         let cipher = Aes256Gcm::new_from_slice(&self.key)
             .map_err(|e| EncryptionError::Encryption(e.to_string()))?;
-        
+
         // Generate a random 96-bit nonce
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
 
         // Encrypt the data
-        let ciphertext = cipher.encrypt(nonce, data)
+        let ciphertext = cipher
+            .encrypt(nonce, data)
             .map_err(|e| EncryptionError::Encryption(e.to_string()))?;
 
         // Combine nonce and ciphertext and encode as base64
         let mut combined = nonce.to_vec();
         combined.extend_from_slice(&ciphertext);
+        let encrypted = combined;
+
+        // Combine salt and encrypted data
+        let mut combined = Vec::with_capacity(16 + encrypted.len());
+        combined.extend_from_slice(&self.salt);
+        combined.extend_from_slice(&encrypted);
         Ok(BASE64.encode(combined))
     }
 
-    /// Decrypts data using the derived key
-    pub fn decrypt(&self, encrypted_data: &str) -> Result<Vec<u8>, EncryptionError> {
-        let cipher = Aes256Gcm::new_from_slice(&self.key)
-            .map_err(|e| EncryptionError::Decryption(e.to_string()))?;
-        
-        // Decode the base64 data
-        let encrypted_bytes = BASE64.decode(encrypted_data)
+    pub fn decrypt(&self, encoded: &str) -> Result<Vec<u8>, EncryptionError> {
+        let data = BASE64.decode(encoded.as_bytes())
             .map_err(|e| EncryptionError::Base64(e.to_string()))?;
-        
-        if encrypted_bytes.len() < 12 {
-            return Err(EncryptionError::Decryption("Invalid encrypted data length".to_string()));
+        if data.len() < 16 {
+            return Err(EncryptionError::Decryption(
+                "Invalid encrypted data length".to_string(),
+            ));
         }
-        
+
+        // Split into salt and encrypted data
+        let (salt, encrypted) = data.split_at(16);
+        let mut salt_array = [0u8; 16];
+        salt_array.copy_from_slice(salt);
+        let key = self.key;
+
+        let cipher = Aes256Gcm::new_from_slice(&key)
+            .map_err(|e| EncryptionError::Decryption(e.to_string()))?;
+
+        if encrypted.len() < 12 {
+            return Err(EncryptionError::Decryption(
+                "Invalid encrypted data length".to_string(),
+            ));
+        }
+
         // Split into nonce and ciphertext
-        let (nonce_bytes, ciphertext) = encrypted_bytes.split_at(12);
+        let (nonce_bytes, ciphertext) = encrypted.split_at(12);
         let nonce = Nonce::from_slice(nonce_bytes);
 
         // Decrypt the data
-        let plaintext = cipher.decrypt(nonce, ciphertext)
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext)
             .map_err(|e| EncryptionError::Decryption(e.to_string()))?;
         Ok(plaintext)
-    }
-
-    /// Generates a random salt for key derivation
-    fn generate_salt() -> Vec<u8> {
-        let mut salt = vec![0u8; 16];
-        OsRng.fill_bytes(&mut salt);
-        salt
     }
 }
 
@@ -113,10 +161,10 @@ mod tests {
     fn test_encrypt_decrypt_cycle() {
         let encryptor = PasswordEncryptor::new("test-password");
         let original_data = b"Hello, World!";
-        
+
         let encrypted = encryptor.encrypt(original_data).unwrap();
         let decrypted = encryptor.decrypt(&encrypted).unwrap();
-        
+
         assert_eq!(original_data.to_vec(), decrypted);
     }
 
@@ -125,10 +173,10 @@ mod tests {
         let encryptor1 = PasswordEncryptor::new("password1");
         let encryptor2 = PasswordEncryptor::new("password2");
         let data = b"test data";
-        
+
         let encrypted1 = encryptor1.encrypt(data).unwrap();
         let encrypted2 = encryptor2.encrypt(data).unwrap();
-        
+
         assert_ne!(encrypted1, encrypted2);
     }
 
@@ -136,10 +184,10 @@ mod tests {
     fn test_wrong_password_fails_decryption() {
         let encryptor1 = PasswordEncryptor::new("correct-password");
         let encryptor2 = PasswordEncryptor::new("wrong-password");
-        
+
         let data = b"sensitive information";
         let encrypted = encryptor1.encrypt(data).unwrap();
-        
+
         assert!(encryptor2.decrypt(&encrypted).is_err());
     }
 
@@ -147,10 +195,10 @@ mod tests {
     fn test_corrupted_data() {
         let encryptor = PasswordEncryptor::new("password");
         let data = b"test data";
-        
+
         let encrypted = encryptor.encrypt(data).unwrap();
-        let corrupted = encrypted[..encrypted.len()-1].to_string() + "X";
-        
+        let corrupted = encrypted[..encrypted.len() - 1].to_string() + "X";
+
         assert!(encryptor.decrypt(&corrupted).is_err());
     }
 
@@ -167,10 +215,10 @@ mod tests {
     fn test_same_data_different_encryption() {
         let encryptor = PasswordEncryptor::new("password");
         let data = b"test data";
-        
+
         let encrypted1 = encryptor.encrypt(data).unwrap();
         let encrypted2 = encryptor.encrypt(data).unwrap();
-        
+
         assert_ne!(encrypted1, encrypted2);
     }
     #[test]
@@ -178,9 +226,28 @@ mod tests {
         let good_password = "pasword";
         let wrong_password = "wrong-password";
         let good_encryptor = PasswordEncryptor::new(&good_password);
-        let bad_encryptor  = PasswordEncryptor::new(&wrong_password);
+        let bad_encryptor = PasswordEncryptor::new(&wrong_password);
         let good_encrypted = good_encryptor.encrypt(b"password").unwrap();
 
         assert!(bad_encryptor.decrypt(&good_encrypted).is_err())
+    }
+
+    #[test]
+    fn test_good_password_is_successfuly_decrypted() {
+        let good_password = "pasword";
+        let good_encryptor = PasswordEncryptor::new(&good_password);
+        let encrypted = good_encryptor.encrypt(good_password.as_bytes()).unwrap();
+        let decrypted = good_encryptor.decrypt(&encrypted).unwrap();
+        assert_eq!(good_password.as_bytes(), decrypted);
+    }
+
+    #[test]
+    fn test_good_password_is_decripted_from_different_decryptor() {
+        let good_password = "pasword";
+        let good_encryptor = PasswordEncryptor::new(&good_password);
+        let encrypted = good_encryptor.encrypt(good_password.as_bytes()).unwrap();
+        let good_encryptor2 = PasswordEncryptor::from_encrypted(&good_password, &encrypted).unwrap();
+        let decrypted = good_encryptor2.decrypt(&encrypted).unwrap();
+        assert_eq!(good_password.as_bytes(), decrypted);
     }
 }
