@@ -4,8 +4,8 @@ use std::{
 };
 use uuid::Uuid;
 
-use crate::encrypt;
-use crate::file_system;
+use crate::{encrypt, file_system::FileSystem};
+use crate::file_system::DefaultFileSystem;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct SecretForm {
@@ -31,14 +31,17 @@ impl Vault {
         Self { name }
     }
     pub fn path(&self) -> PathBuf {
-        Path::new(&file_system::vault_folder(&self.name)).to_path_buf()
+        let fs = DefaultFileSystem::default();
+        // fs.vault_folder(&self.name);
+        Path::new(&fs.vault_folder(&self.name)).to_path_buf()
     }
     pub fn secret_path(&self, id: &str) -> PathBuf {
         self.path().join(format!("{}.enc", id)).to_path_buf()
     }
 
     pub fn pk_path(&self) -> PathBuf {
-        Path::new(&file_system::pk_for_vault(&self.name)).to_path_buf()
+        let fs = DefaultFileSystem::default();
+        Path::new(&fs.pk_for_vault(&self.name)).to_path_buf()
     }
 }
 

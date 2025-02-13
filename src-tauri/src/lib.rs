@@ -5,6 +5,7 @@ mod encrypt;
 mod file_system;
 mod master_password;
 mod secrets;
+use file_system::{FileSystem, DefaultFileSystem};
 
 use std::sync::Mutex;
 
@@ -56,13 +57,13 @@ pub fn run() {
         .setup(|app| {
             // Initialize AppState first
             app.manage(Mutex::new(AppState::default()));
-
+            let fs = DefaultFileSystem::default();
             // Initialize file system
-            file_system::init().map_err(|e| AppError {
+            fs.init().map_err(|e| AppError {
                 message: format!("Failed to initialize file system: {}", e),
             })?;
 
-            let app_dir = file_system::app_data_directory();
+            let app_dir = fs.app_data_directory();
             let scope = app.fs_scope();
             scope.allow_directory(&app_dir, false)?;
 
