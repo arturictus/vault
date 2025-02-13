@@ -11,9 +11,18 @@ use std::sync::Mutex;
 
 use tauri::{Builder, Manager};
 
+#[derive(serde::Serialize)]
 struct AppState {
     master_password: Option<String>,
     authenticated: bool,
+}
+
+impl fmt::Debug for AppState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        serde_json::to_string(self)
+            .map_err(|e| fmt::Error)
+            .and_then(|s| write!(f, "{}", s))
+    }
 }
 
 impl Default for AppState {

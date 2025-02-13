@@ -1,6 +1,7 @@
 mod password_encryptor;
 use crate::{file_system::DefaultFileSystem, file_system::FileSystem, AppState};
 use password_encryptor::PasswordEncryptor;
+use crate::encrypt::rsa;
 use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
@@ -14,7 +15,7 @@ pub fn save_master_password(
     let fs = DefaultFileSystem::default();
     let encryptor = store_master_password(&fs, password)?;
     let pk = match private_key {
-        Some(pk) => crate::encrypt::rsa::Encryptor::from_string(pk).map_err(|e| e.to_string())?,
+        Some(pk) => rsa::Encryptor::from_string(pk).map_err(|e| e.to_string())?,
         None => crate::encrypt::create_pk().map_err(|e| e.to_string())?,
     };
     store_pk(&fs, pk, encryptor)?;
@@ -40,7 +41,7 @@ fn store_master_password<T: FileSystem>(
 
 fn store_pk<T: FileSystem>(
     fs: &T,
-    pk: crate::encrypt::rsa::Encryptor,
+    pk: rsa::Encryptor,
     password_encryptor: PasswordEncryptor,
 ) -> Result<(), String> {
     let master_pk = fs.master_pk();
