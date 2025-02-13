@@ -51,7 +51,7 @@ fn store_pk<T: FileSystem>(
     let encrypted_pk = password_encryptor
         .encrypt(pem.as_bytes())
         .map_err(|e| e.to_string())?;
-    fs::write(pk_for_default_path, encrypted_pk.to_string()).map_err(|e| e.to_string())?;
+    fs::write(pk_for_default_path, &encrypted_pk).map_err(|e| e.to_string())?;
     let public = pk.public_key_pem().map_err(|e| e.to_string())?;
     fs::write(fs.master_pub(), public).map_err(|e| e.to_string())?;
 
@@ -101,7 +101,7 @@ mod tests {
     fn test_store_master_password() {
         let password = "secret";
         let fs = setup();
-        store_master_password(&fs, &password).unwrap();
+        store_master_password(&fs, password).unwrap();
         do_verify_password(&fs, password).unwrap();
     }
 

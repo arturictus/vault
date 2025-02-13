@@ -35,11 +35,6 @@ pub trait FileSystem: Send + Sync {
         self.vaults_folder().join(vault_folder)
     }
 
-    fn create_vault_folder(&self, vault_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let folder = self.vault_folder(vault_name);
-        std::fs::create_dir_all(&folder)?;
-        Ok(())
-    }
     fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
         let app_dir = self.app_data_directory();
         std::fs::create_dir_all(&app_dir)?;
@@ -50,7 +45,7 @@ pub trait FileSystem: Send + Sync {
         let pk_for_default_vault = self.pk_for_vault("default");
         let pk_for_default_path = Path::new(&pk_for_default_vault);
         if !pk_for_default_path.exists() {
-            crate::encrypt::create_pk_at_path(&pk_for_default_path)?;
+            crate::encrypt::create_pk_at_path(pk_for_default_path)?;
         }
         Ok(())
     }

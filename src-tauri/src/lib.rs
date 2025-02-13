@@ -9,9 +9,10 @@ use file_system::{FileSystem, DefaultFileSystem};
 
 use std::sync::Mutex;
 
-use tauri::{Builder, Manager};
+use tauri::Manager;
 
 #[derive(serde::Serialize)]
+#[derive(Default)]
 struct AppState {
     master_password: Option<String>,
     authenticated: bool,
@@ -20,19 +21,11 @@ struct AppState {
 impl fmt::Debug for AppState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         serde_json::to_string(self)
-            .map_err(|e| fmt::Error)
+            .map_err(|_e| fmt::Error)
             .and_then(|s| write!(f, "{}", s))
     }
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        Self {
-            master_password: None,
-            authenticated: false,
-        }
-    }
-}
 
 #[tauri::command]
 fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, String> {
@@ -40,10 +33,10 @@ fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, St
     let state = state.lock().map_err(|e| e.to_string())?;
     if state.authenticated {
         println!("====> true");
-        return Ok(true)
+        Ok(true)
     } else {
         println!("====> false");
-        return Ok(false);
+        Ok(false)
     }
 }
 

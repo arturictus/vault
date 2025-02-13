@@ -4,22 +4,13 @@ use aes_gcm::{
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::{rngs::OsRng, RngCore};
-use ring::{digest, pbkdf2};
 use std::error::Error as StdError;
 use std::fmt;
-use std::num::NonZeroU32;
 impl StdError for EncryptionError {}
 
-use rand::{thread_rng};
-use crypto::{buffer::{BufferResult, ReadBuffer, WriteBuffer}, aes::ecb_encryptor, blockmodes::NoPadding, aes::ecb_decryptor};
-use crypto::buffer::{RefReadBuffer, RefWriteBuffer};
-use crypto::aes::KeySize::KeySize256;
+use rand::thread_rng;
 use crypto::digest::Digest;
 use crypto::sha3::Sha3;
-
-static PBKDF2_ALG: pbkdf2::Algorithm = pbkdf2::PBKDF2_HMAC_SHA256;
-const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
-const PBKDF2_ITERATIONS: u32 = 100_000;
 
 #[derive(Debug)]
 pub enum EncryptionError {
@@ -225,8 +216,8 @@ mod tests {
     fn test_verify_password() {
         let good_password = "pasword";
         let wrong_password = "wrong-password";
-        let good_encryptor = PasswordEncryptor::new(&good_password);
-        let bad_encryptor = PasswordEncryptor::new(&wrong_password);
+        let good_encryptor = PasswordEncryptor::new(good_password);
+        let bad_encryptor = PasswordEncryptor::new(wrong_password);
         let good_encrypted = good_encryptor.encrypt(b"password").unwrap();
 
         assert!(bad_encryptor.decrypt(&good_encrypted).is_err())
@@ -235,7 +226,7 @@ mod tests {
     #[test]
     fn test_good_password_is_successfuly_decrypted() {
         let good_password = "pasword";
-        let good_encryptor = PasswordEncryptor::new(&good_password);
+        let good_encryptor = PasswordEncryptor::new(good_password);
         let encrypted = good_encryptor.encrypt(good_password.as_bytes()).unwrap();
         let decrypted = good_encryptor.decrypt(&encrypted).unwrap();
         assert_eq!(good_password.as_bytes(), decrypted);
@@ -244,9 +235,9 @@ mod tests {
     #[test]
     fn test_good_password_is_decripted_from_different_decryptor() {
         let good_password = "pasword";
-        let good_encryptor = PasswordEncryptor::new(&good_password);
+        let good_encryptor = PasswordEncryptor::new(good_password);
         let encrypted = good_encryptor.encrypt(good_password.as_bytes()).unwrap();
-        let good_encryptor2 = PasswordEncryptor::from_encrypted(&good_password, &encrypted).unwrap();
+        let good_encryptor2 = PasswordEncryptor::from_encrypted(good_password, &encrypted).unwrap();
         let decrypted = good_encryptor2.decrypt(&encrypted).unwrap();
         assert_eq!(good_password.as_bytes(), decrypted);
     }

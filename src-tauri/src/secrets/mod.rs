@@ -58,7 +58,7 @@ pub fn create_secret(data: SecretForm) -> Result<String, String> {
     let json: String = serde_json::to_string(&secret).map_err(|e| e.to_string())?;
     let pk_path = vault.pk_path();
     let encrypted =
-        encrypt::encrypt_string(&pk_path.as_path(), &json).map_err(|e| e.to_string())?;
+        encrypt::encrypt_string(pk_path.as_path(), &json).map_err(|e| e.to_string())?;
     let out_path = vault.secret_path(&secret.id);
     fs::write(out_path, encrypted).map_err(|e| e.to_string())?;
     Ok("Submitted secret".to_string())
@@ -71,7 +71,7 @@ pub fn get_secret(id: &str) -> Result<Secret, String> {
     let secret_path = vault.secret_path(id);
     let encrypted = fs::read_to_string(secret_path).map_err(|e| e.to_string())?;
     let decrypted =
-        encrypt::decrypt_string(&pk_path.as_path(), &encrypted).map_err(|e| e.to_string())?;
+        encrypt::decrypt_string(pk_path.as_path(), &encrypted).map_err(|e| e.to_string())?;
     let secret: Secret = serde_json::from_str(&decrypted).map_err(|e| e.to_string())?;
     Ok(secret)
 }
@@ -96,7 +96,7 @@ pub fn get_secrets() -> Result<Vec<Secret>, String> {
             let path = entry.path();
             println!("Path to file: {:?}", path);
             let encrypted = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-            let decrypted = encrypt::decrypt_string(&pk_path.as_path(), &encrypted)
+            let decrypted = encrypt::decrypt_string(pk_path.as_path(), &encrypted)
                 .map_err(|e| e.to_string())?;
             let secret: Secret = serde_json::from_str(&decrypted).map_err(|e| e.to_string())?;
             secrets.push(secret);
