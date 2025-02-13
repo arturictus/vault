@@ -1,41 +1,39 @@
+mod error;
 mod password_encryptor;
-use crate::{file_system::DefaultFileSystem, file_system::FileSystem, AppState};
-use password_encryptor::PasswordEncryptor;
 use crate::encrypt::rsa;
+use crate::{file_system::DefaultFileSystem, file_system::FileSystem, AppState};
+pub use error::{Error, Result};
+use password_encryptor::PasswordEncryptor;
 use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
 use tauri::State;
+
 #[tauri::command]
 pub fn save_master_password(
     state: State<'_, Mutex<AppState>>,
     password: &str,
     private_key: Option<&str>,
-) -> Result<String, String> {
+) -> Result<String> {
     let fs = DefaultFileSystem::default();
     let encryptor = store_master_password(&fs, password)?;
     let pk = match private_key {
-        Some(pk) => rsa::Encryptor::from_string(pk).map_err(|e| e.to_string())?,
-        None => crate::encrypt::create_pk().map_err(|e| e.to_string())?,
+        Some(pk) => rsa::Encryptor::from_string(pk)?,
+        None => crate::encrypt::create_pk()?,
     };
     store_pk(&fs, pk, encryptor)?;
-    let mut state = state.lock().map_err(|e| e.to_string())?;
+    let mut state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
     state.master_password = Some(password.to_string());
     state.authenticated = true;
 
     Ok("Master password saved".to_string())
 }
 
-fn store_master_password<T: FileSystem>(
-    fs: &T,
-    password: &str,
-) -> Result<PasswordEncryptor, String> {
+fn store_master_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
     let encryptor = PasswordEncryptor::new(password);
-    let encrypted = encryptor
-        .encrypt(password.as_bytes())
-        .map_err(|e| e.to_string())?;
+    let encrypted = encryptor.encrypt(password.as_bytes())?;
     let path = fs.master_password();
-    fs::write(path, encrypted).map_err(|e| e.to_string())?;
+    fs::write(path, encrypted)?;
     Ok(encryptor)
 }
 
@@ -43,47 +41,43 @@ fn store_pk<T: FileSystem>(
     fs: &T,
     pk: rsa::Encryptor,
     password_encryptor: PasswordEncryptor,
-) -> Result<(), String> {
+) -> Result<()> {
     let master_pk = fs.master_pk();
     let pk_for_default_path = Path::new(&master_pk);
 
-    let pem = pk.private_key_pem().map_err(|e| e.to_string())?;
-    let encrypted_pk = password_encryptor
-        .encrypt(pem.as_bytes())
-        .map_err(|e| e.to_string())?;
-    fs::write(pk_for_default_path, &encrypted_pk).map_err(|e| e.to_string())?;
-    let public = pk.public_key_pem().map_err(|e| e.to_string())?;
-    fs::write(fs.master_pub(), public).map_err(|e| e.to_string())?;
+    let pem = pk.private_key_pem()?;
+    let encrypted_pk = password_encryptor.encrypt(pem.as_bytes())?;
+    fs::write(pk_for_default_path, &encrypted_pk)?;
+    let public = pk.public_key_pem()?;
+    fs::write(fs.master_pub(), public)?;
 
     Ok(())
 }
 
 #[tauri::command]
-pub fn verify_master_password(
-    state: State<'_, Mutex<AppState>>,
-    password: &str,
-) -> Result<String, String> {
+pub fn verify_master_password(state: State<'_, Mutex<AppState>>, password: &str) -> Result<String> {
     let fs = DefaultFileSystem::default();
     println!("Verifying master password {}", password);
     match do_verify_password(&fs, password) {
         Ok(_) => {
-            let mut state = state.lock().map_err(|e| e.to_string())?;
+            let mut state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
             state.master_password = Some(password.to_string());
             state.authenticated = true;
             Ok("Master password correct".to_string())
         }
-        Err(_) => Err("Master password incorrect".to_string()),
+        Err(_) => Err(Error::WrongPassword(
+            "Master password incorrect".to_string(),
+        )),
     }
 }
 
-fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor, String> {
+fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
     let path = fs.master_password();
-    let encoded = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let encoded = fs::read_to_string(path)?;
 
-    let encryptor =
-        PasswordEncryptor::from_encrypted(password, &encoded).map_err(|e| e.to_string())?;
+    let encryptor = PasswordEncryptor::from_encrypted(password, &encoded)?;
 
-    encryptor.decrypt(&encoded).map_err(|e| e.to_string())?;
+    encryptor.decrypt(&encoded)?;
     Ok(encryptor)
 }
 

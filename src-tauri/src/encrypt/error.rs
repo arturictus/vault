@@ -3,16 +3,16 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Error, Debug, serde::Serialize)]
 pub enum Error {
-    RSA(String),
+    Rsa(String),
     Base64(String),
     BadUTF8(String),
     Io(String),
 }
 
-// --- RSA errors
+// --- Rsa errors
 impl From<rsa::errors::Error> for Error {
     fn from(e: rsa::errors::Error) -> Self {
-        Error::RSA(e.to_string())
+        Error::Rsa(e.to_string())
     }
 }
 
@@ -24,7 +24,7 @@ impl From<base64::DecodeError> for Error {
 
 impl From<rsa::pkcs8::Error> for Error {
     fn from(e: rsa::pkcs8::Error) -> Self {
-        Error::RSA(e.to_string())
+        Error::Rsa(e.to_string())
     }
 }
 impl From<std::io::Error> for Error {
@@ -41,7 +41,7 @@ impl From<std::string::FromUtf8Error> for Error {
 
 impl From<rsa::pkcs8::spki::Error> for Error {
     fn from(e: rsa::pkcs8::spki::Error) -> Self {
-        Error::RSA(e.to_string())
+        Error::Rsa(e.to_string())
     }
 }
 

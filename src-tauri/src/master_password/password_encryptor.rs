@@ -4,32 +4,10 @@ use aes_gcm::{
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::{rngs::OsRng, RngCore};
-use std::error::Error as StdError;
-use std::fmt;
-impl StdError for EncryptionError {}
-
-use rand::thread_rng;
+use crate::master_password::{Error, Result};
 use crypto::digest::Digest;
 use crypto::sha3::Sha3;
-
-#[derive(Debug)]
-pub enum EncryptionError {
-    Encryption(String),
-    Decryption(String),
-    Base64(String),
-}
-
-impl fmt::Display for EncryptionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            EncryptionError::Encryption(msg) => write!(f, "Encryption error: {}", msg),
-            EncryptionError::Decryption(msg) => write!(f, "Decryption error: {}", msg),
-            EncryptionError::Base64(msg) => write!(f, "Base64 error: {}", msg),
-        }
-    }
-}
-
-
+use rand::thread_rng;
 
 #[derive(Debug)]
 pub struct PasswordEncryptor {
@@ -48,14 +26,16 @@ impl PasswordEncryptor {
         let mut salt_array = [0u8; 16];
         salt_array.copy_from_slice(salt);
         let key = Self::derive_key(password, &salt_array);
-        Self { key, salt: salt_array }
+        Self {
+            key,
+            salt: salt_array,
+        }
     }
 
-    pub fn from_encrypted(password: &str, encrypted: &str) -> Result<Self, EncryptionError> {
-        let data = BASE64.decode(encrypted.as_bytes())
-            .map_err(|e| EncryptionError::Base64(e.to_string()))?;
+    pub fn from_encrypted(password: &str, encrypted: &str) -> Result<Self> {
+        let data = BASE64.decode(encrypted.as_bytes())?;
         if data.len() < 16 {
-            return Err(EncryptionError::Decryption(
+            return Err(Error::Base64(
                 "Invalid encrypted data length".to_string(),
             ));
         }
@@ -82,9 +62,9 @@ impl PasswordEncryptor {
         key
     }
 
-    pub fn encrypt(&self, data: &[u8]) -> Result<String, EncryptionError> {
+    pub fn encrypt(&self, data: &[u8]) -> Result<String> {
         let cipher = Aes256Gcm::new_from_slice(&self.key)
-            .map_err(|e| EncryptionError::Encryption(e.to_string()))?;
+            .map_err(|e| Error::EncryptPassword(e.to_string()))?;
 
         // Generate a random 96-bit nonce
         let mut nonce_bytes = [0u8; 12];
@@ -94,7 +74,7 @@ impl PasswordEncryptor {
         // Encrypt the data
         let ciphertext = cipher
             .encrypt(nonce, data)
-            .map_err(|e| EncryptionError::Encryption(e.to_string()))?;
+            .map_err(|e| Error::EncryptPassword(e.to_string()))?;
 
         // Combine nonce and ciphertext and encode as base64
         let mut combined = nonce.to_vec();
@@ -108,11 +88,10 @@ impl PasswordEncryptor {
         Ok(BASE64.encode(combined))
     }
 
-    pub fn decrypt(&self, encoded: &str) -> Result<Vec<u8>, EncryptionError> {
-        let data = BASE64.decode(encoded.as_bytes())
-            .map_err(|e| EncryptionError::Base64(e.to_string()))?;
+    pub fn decrypt(&self, encoded: &str) -> Result<Vec<u8>> {
+        let data = BASE64.decode(encoded.as_bytes())?;
         if data.len() < 16 {
-            return Err(EncryptionError::Decryption(
+            return Err(Error::DecryptPassword(
                 "Invalid encrypted data length".to_string(),
             ));
         }
@@ -123,11 +102,10 @@ impl PasswordEncryptor {
         salt_array.copy_from_slice(salt);
         let key = self.key;
 
-        let cipher = Aes256Gcm::new_from_slice(&key)
-            .map_err(|e| EncryptionError::Decryption(e.to_string()))?;
+        let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| Error::EncryptPassword(e.to_string()))?;
 
         if encrypted.len() < 12 {
-            return Err(EncryptionError::Decryption(
+            return Err(Error::DecryptPassword(
                 "Invalid encrypted data length".to_string(),
             ));
         }
@@ -139,7 +117,7 @@ impl PasswordEncryptor {
         // Decrypt the data
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
-            .map_err(|e| EncryptionError::Decryption(e.to_string()))?;
+            .map_err(|e| Error::DecryptPassword(e.to_string()))?;
         Ok(plaintext)
     }
 }
@@ -198,7 +176,7 @@ mod tests {
         let encryptor = PasswordEncryptor::new("password");
         assert!(matches!(
             encryptor.decrypt("not-base64!@#$"),
-            Err(EncryptionError::Base64(_))
+            Err(Error::Base64(_))
         ));
     }
 
