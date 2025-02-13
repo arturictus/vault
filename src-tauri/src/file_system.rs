@@ -1,37 +1,17 @@
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
+#[cfg(test)]
+use tempfile::TempDir;
 
 pub trait FileSystem: Send + Sync {
-    fn app_data_directory(&self) -> PathBuf;
-    fn vaults_folder(&self) -> PathBuf;
-    fn pk_for_vault(&self, vault_name: &str) -> PathBuf;
-    fn master_password(&self) -> PathBuf;
-    fn master_pk(&self) -> PathBuf;
-    fn master_pub(&self) -> PathBuf;
-    fn vault_folder(&self, vault_name: &str) -> PathBuf;
-    fn create_vault_folder(&self, vault_name: &str) -> Result<(), Box<dyn std::error::Error>>;
-    fn init(&self) -> Result<(), Box<dyn std::error::Error>>;
-}
+    fn root(&self) -> PathBuf;
 
-pub struct DefaultFileSystem {
-    root: PathBuf,
-}
-
-impl Default for DefaultFileSystem {
-    fn default() -> Self {
-        Self {
-            root: dirs::home_dir().map(|home| home.join(".vault")).unwrap()
-        }
-    }
-}
-
-impl FileSystem for DefaultFileSystem {
     fn app_data_directory(&self) -> PathBuf {
-        self.root.join("app-data")
+        self.root().join("app-data")
     }
 
     fn vaults_folder(&self) -> PathBuf {
-        self.root.join("vaults")
+        self.root().join("vaults")
     }
 
     fn pk_for_vault(&self, vault_name: &str) -> PathBuf {
@@ -39,15 +19,15 @@ impl FileSystem for DefaultFileSystem {
     }
 
     fn master_password(&self) -> PathBuf {
-        self.root.join("master_password.enc")
+        self.root().join("master_password.enc")
     }
 
     fn master_pk(&self) -> PathBuf {
-        self.root.join("rsa_master_pk.enc")
+        self.root().join("rsa_master_pk.enc")
     }
 
     fn master_pub(&self) -> PathBuf {
-        self.root.join("rsa_master_pub")
+        self.root().join("rsa_master_pub")
     }
 
     fn vault_folder(&self, vault_name: &str) -> PathBuf {
@@ -76,6 +56,23 @@ impl FileSystem for DefaultFileSystem {
     }
 }
 
+pub struct DefaultFileSystem {
+    root: PathBuf,
+}
+
+impl Default for DefaultFileSystem {
+    fn default() -> Self {
+        Self {
+            root: dirs::home_dir().map(|home| home.join(".vault")).unwrap(),
+        }
+    }
+}
+impl FileSystem for DefaultFileSystem {
+    fn root(&self) -> PathBuf {
+        self.root.clone()
+    }
+}
+
 #[cfg(test)]
 pub struct TestFileSystem {
     root: PathBuf,
@@ -91,49 +88,15 @@ impl TestFileSystem {
 #[cfg(test)]
 impl Default for TestFileSystem {
     fn default() -> Self {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = TempDir::new().unwrap();
         Self::new(temp_dir.path().to_path_buf())
     }
 }
 
 #[cfg(test)]
 impl FileSystem for TestFileSystem {
-    fn app_data_directory(&self) -> PathBuf {
-        self.root.join("app-data")
-    }
-
-    fn vaults_folder(&self) -> PathBuf {
-        self.root.join("vaults")
-    }
-
-    fn pk_for_vault(&self, vault_name: &str) -> PathBuf {
-        self.vault_folder(vault_name).join("private_key")
-    }
-
-    fn master_password(&self) -> PathBuf {
-        self.root.join("master_password.enc")
-    }
-
-    fn master_pk(&self) -> PathBuf {
-        self.root.join("rsa_master_pk.enc")
-    }
-
-    fn master_pub(&self) -> PathBuf {
-        self.root.join("rsa_master_pub")
-    }
-
-    fn vault_folder(&self, vault_name: &str) -> PathBuf {
-        let vault_folder = format!("{}.vault", vault_name);
-        self.vaults_folder().join(vault_folder)
-    }
-
-    fn create_vault_folder(&self, vault_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let folder = self.vault_folder(vault_name);
-        std::fs::create_dir_all(&folder)?;
-        Ok(())
-    }
-    fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
+    fn root(&self) -> PathBuf {
+        self.root.clone()
     }
 }
 
@@ -146,11 +109,11 @@ mod tests {
     fn test_file_system() {
         let temp_dir = TempDir::new().unwrap();
         let fs = TestFileSystem::new(temp_dir.path().to_path_buf());
-        
+
         assert_eq!(fs.app_data_directory(), temp_dir.path().join("app-data"));
         assert_eq!(fs.vaults_folder(), temp_dir.path().join("vaults"));
         assert_eq!(
-            fs.vault_folder("test"), 
+            fs.vault_folder("test"),
             temp_dir.path().join("vaults").join("test.vault")
         );
     }

@@ -1,9 +1,9 @@
 mod password_encryptor;
 use crate::{file_system::DefaultFileSystem, file_system::FileSystem, AppState};
 use password_encryptor::PasswordEncryptor;
+use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
-use std::fs;
 use tauri::State;
 #[tauri::command]
 pub fn save_master_password(
@@ -46,15 +46,14 @@ fn store_pk<T: FileSystem>(
     let master_pk = fs.master_pk();
     let pk_for_default_path = Path::new(&master_pk);
 
-    if !pk_for_default_path.exists() {
-        let pem = pk.private_key_pem().map_err(|e| e.to_string())?;
-        let encrypted_pk = password_encryptor
-            .encrypt(pem.as_bytes())
-            .map_err(|e| e.to_string())?;
-        fs::write(pk_for_default_path, encrypted_pk.to_string()).map_err(|e| e.to_string())?;
-        let public = pk.public_key_pem().map_err(|e| e.to_string())?;
-        fs::write(fs.master_pub(), public).map_err(|e| e.to_string())?;
-    }
+    let pem = pk.private_key_pem().map_err(|e| e.to_string())?;
+    let encrypted_pk = password_encryptor
+        .encrypt(pem.as_bytes())
+        .map_err(|e| e.to_string())?;
+    fs::write(pk_for_default_path, encrypted_pk.to_string()).map_err(|e| e.to_string())?;
+    let public = pk.public_key_pem().map_err(|e| e.to_string())?;
+    fs::write(fs.master_pub(), public).map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -87,6 +86,32 @@ fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordE
     Ok(encryptor)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::file_system::TestFileSystem;
+
+    fn setup() -> TestFileSystem {
+        let fs = TestFileSystem::default();
+        fs.init().unwrap();
+        fs
+    }
+    #[test]
+    fn test_store_master_password() {
+        let password = "secret";
+        let fs = setup();
+        store_master_password(&fs, &password).unwrap();
+        do_verify_password(&fs, password).unwrap();
+    }
+
+    #[test]
+    fn test_verify_password() {
+        let fs = setup();
+        let result = do_verify_password(&fs, "secret");
+        assert!(result.is_err());
+    }
+}
+
 // pub fn encrypt(password: &str, input: &str) -> Result<String, String> {
 //     let encryptor = do_verify_password(password)?;
 //     encryptor
@@ -98,29 +123,4 @@ fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordE
 //     let encryptor = do_verify_password(password)?;
 //     let decrypted = encryptor.decrypt(input).map_err(|e| e.to_string())?;
 //     Ok(String::from_utf8(decrypted).map_err(|e| e.to_string())?)
-// }
-
-// #[test]
-// fn test_store_master_password() {
-//     let password = "secret";
-//     store_master_password(&password).unwrap();
-//     do_verify_password(password).unwrap();
-// }
-
-// #[test]
-// fn test_verify_password() {
-//     let result = do_verify_password("secret");
-//     result.unwrap();
-// }
-
-// #[test]
-// fn test_password_is_well_stored() {
-//     let password = "secret";
-//     let path = file_system::master_password();
-//     println!("path to master_password {}", path);
-//     let encrypted = fs::read_to_string(path).map_err(|e| e.to_string()).unwrap();
-//     let encryptor = PasswordEncryptor::new(password);
-//     let decrypted = encryptor.decrypt(&encrypted).unwrap();
-//     println!("decrypted pass: {:?}", decrypted);
-//     assert_eq!(password.as_bytes(), decrypted)
 // }
