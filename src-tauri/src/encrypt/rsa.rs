@@ -4,9 +4,9 @@ use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey, LineEnding, EncodePublicKey},
     Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
 };
-use std::error::Error;
 use std::fs;
 use std::path::Path;
+use crate::encrypt::Result;
 
 pub struct Encryptor {
     pub private_key: RsaPrivateKey,
@@ -14,7 +14,7 @@ pub struct Encryptor {
 }
 
 impl Encryptor {
-    pub fn new() -> Result<Self, Box<dyn Error>> {
+    pub fn new() -> Result<Self> {
         let mut rng = OsRng;
         let private_key = RsaPrivateKey::new(&mut rng, 2048)?;
         let public_key = RsaPublicKey::from(&private_key);
@@ -25,12 +25,12 @@ impl Encryptor {
         })
     }
 
-    pub fn from_file(path: &Path) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file(path: &Path) -> Result<Self> {
         let pem = fs::read_to_string(path)?;
         Self::from_string(&pem)
     }
 
-    pub fn from_string(pem: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_string(pem: &str) -> Result<Self> {
         let private_key = RsaPrivateKey::from_pkcs8_pem(pem)?;
         let public_key = RsaPublicKey::from(&private_key);
 
@@ -40,42 +40,43 @@ impl Encryptor {
         })
     }
 
-    pub fn save_to_file(&self, path: &Path) -> Result<(), Box<dyn Error>> {
+    pub fn save_to_file(&self, path: &Path) -> Result<()> {
         let pem = self.private_key.to_pkcs8_pem(LineEnding::LF)?;
         fs::write(path, pem.as_bytes())?;
         Ok(())
     }
 
-    pub fn private_key_pem(&self) -> Result<String, Box<dyn Error>> {
+    pub fn private_key_pem(&self) -> Result<String> {
         let pem = self.private_key.to_pkcs8_pem(LineEnding::LF)?;
         Ok(pem.to_string())
     }
 
-    pub fn public_key_pem(&self) -> Result<String, Box<dyn Error>> {
+    pub fn public_key_pem(&self) -> Result<String> {
         let pem = self.public_key.to_public_key_pem(LineEnding::LF)?;
         Ok(pem)
     }
 
-    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         let mut rng = OsRng;
         let encrypted = self.public_key.encrypt(&mut rng, Pkcs1v15Encrypt, data)?;
         Ok(encrypted)
     }
 
-    pub fn decrypt(&self, encrypted_data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn decrypt(&self, encrypted_data: &[u8]) -> Result<Vec<u8>> {
         let decrypted = self.private_key.decrypt(Pkcs1v15Encrypt, encrypted_data)?;
         Ok(decrypted)
     }
 
-    pub fn encrypt_string(&self, input: &str) -> Result<String, Box<dyn Error>> {
+    pub fn encrypt_string(&self, input: &str) -> Result<String> {
         let encrypted = self.encrypt(input.as_bytes())?;
         Ok(BASE64.encode(encrypted))
     }
 
-    pub fn decrypt_string(&self, input: &str) -> Result<String, Box<dyn Error>> {
+    pub fn decrypt_string(&self, input: &str) -> Result<String> {
         let decoded = BASE64.decode(input)?;
         let decrypted = self.decrypt(&decoded)?;
-        String::from_utf8(decrypted).map_err(|e| e.into())
+        let result = String::from_utf8(decrypted)?;
+        Ok(result)
     }
 }
 

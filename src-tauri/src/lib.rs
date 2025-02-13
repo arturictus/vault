@@ -1,11 +1,12 @@
-use std::error::Error;
 use std::fmt;
 use tauri_plugin_fs::FsExt;
 mod encrypt;
 mod file_system;
 mod master_password;
 mod secrets;
+mod error;
 use file_system::{FileSystem, DefaultFileSystem};
+pub use error::{Error, Result};
 
 use std::sync::Mutex;
 
@@ -28,9 +29,9 @@ impl fmt::Debug for AppState {
 
 
 #[tauri::command]
-fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, String> {
+fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool> {
     println!("Checking if authenticated");
-    let state = state.lock().map_err(|e| e.to_string())?;
+    let state = state.lock()?;
     if state.authenticated {
         println!("====> true");
         Ok(true)
@@ -40,19 +41,6 @@ fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool, St
     }
 }
 
-#[derive(Debug)]
-struct AppError {
-    message: String,
-}
-
-impl fmt::Display for AppError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl Error for AppError {}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -61,9 +49,7 @@ pub fn run() {
             app.manage(Mutex::new(AppState::default()));
             let fs = DefaultFileSystem::default();
             // Initialize file system
-            fs.init().map_err(|e| AppError {
-                message: format!("Failed to initialize file system: {}", e),
-            })?;
+            fs.init()?;
 
             let app_dir = fs.app_data_directory();
             let scope = app.fs_scope();
