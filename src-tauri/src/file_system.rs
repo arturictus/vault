@@ -54,7 +54,6 @@ pub trait FileSystem: Send + Sync {
 pub struct DefaultFileSystem {
     root: PathBuf,
 }
-
 impl Default for DefaultFileSystem {
     fn default() -> Self {
         Self {
@@ -69,6 +68,7 @@ impl FileSystem for DefaultFileSystem {
 }
 
 #[cfg(test)]
+#[derive(Clone)]
 pub struct TestFileSystem {
     root: PathBuf,
 }

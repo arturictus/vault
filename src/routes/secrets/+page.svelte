@@ -11,7 +11,6 @@
     TableSearch,
     Button,
     Dropdown,
-    DropdownItem,
     Checkbox,
     ButtonGroup,
   } from "flowbite-svelte";
@@ -136,10 +135,6 @@
       <Button color="alternative"
         >Actions<ChevronDownOutline class="w-3 h-3 ml-2" /></Button
       >
-      <Dropdown class="w-44 divide-y divide-gray-100">
-        <DropdownItem>Mass Edit</DropdownItem>
-        <DropdownItem>Delete all</DropdownItem>
-      </Dropdown>
     </div>
 
     <TableHead>
