@@ -1,42 +1,67 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[cfg(test)]
 use tempfile::TempDir;
 
-pub trait FileSystem: Send + Sync {
-    fn root(&self) -> PathBuf;
+#[derive(Clone)]
+pub struct FileSystem {
+    root: PathBuf,
+}
 
-    fn app_data_directory(&self) -> PathBuf {
+impl Default for FileSystem {
+    fn default() -> Self {
+        let root = dirs::data_dir().unwrap().join("tauri");
+        Self { root }
+    }
+}
+
+impl FileSystem {
+
+    #[cfg(test)] 
+    pub fn new_test() -> Self {
+        let temp_dir = TempDir::new().unwrap();
+        let inst = Self {
+            root: temp_dir.path().to_path_buf(),
+        };
+        inst.init().unwrap();
+        inst
+    }
+
+    pub fn root(&self) -> PathBuf {
+        self.root.clone()
+    }
+
+    pub fn app_data_directory(&self) -> PathBuf {
         self.root().join("app-data")
     }
 
-    fn vaults_folder(&self) -> PathBuf {
+    pub fn vaults_folder(&self) -> PathBuf {
         self.root().join("vaults")
     }
 
-    fn pk_for_vault(&self, vault_name: &str) -> PathBuf {
+    pub fn pk_for_vault(&self, vault_name: &str) -> PathBuf {
         self.vault_folder(vault_name).join("private_key")
     }
 
-    fn master_password(&self) -> PathBuf {
+    pub fn master_password(&self) -> PathBuf {
         self.root().join("master_password.enc")
     }
 
-    fn master_pk(&self) -> PathBuf {
+    pub fn master_pk(&self) -> PathBuf {
         self.root().join("rsa_master_pk.enc")
     }
 
-    fn master_pub(&self) -> PathBuf {
+    pub fn master_pub(&self) -> PathBuf {
         self.root().join("rsa_master_pub")
     }
 
-    fn vault_folder(&self, vault_name: &str) -> PathBuf {
+    pub fn vault_folder(&self, vault_name: &str) -> PathBuf {
         let vault_folder = format!("{}.vault", vault_name);
         self.vaults_folder().join(vault_folder)
     }
 
     // TODO: Change Result to crate::Error::TauriInit
-    fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
         let app_dir = self.app_data_directory();
         std::fs::create_dir_all(&app_dir)?;
         let vaults_dir = self.vaults_folder();
@@ -47,66 +72,21 @@ pub trait FileSystem: Send + Sync {
     }
 }
 
-pub struct DefaultFileSystem {
-    root: PathBuf,
-}
-
-impl Default for DefaultFileSystem {
-    fn default() -> Self {
-        Self {
-            root: dirs::home_dir().map(|home| home.join(".vault")).unwrap(),
-        }
-    }
-}
-impl FileSystem for DefaultFileSystem {
-    fn root(&self) -> PathBuf {
-        self.root.clone()
-    }
-}
-
-#[cfg(test)]
-#[derive(Clone)]
-pub struct TestFileSystem {
-    root: PathBuf,
-}
-
-#[cfg(test)]
-impl TestFileSystem {
-    pub fn new(root: PathBuf) -> Self {
-        Self { root }
-    }
-}
-
-#[cfg(test)]
-impl Default for TestFileSystem {
-    fn default() -> Self {
-        let temp_dir = TempDir::new().unwrap();
-        Self::new(temp_dir.path().to_path_buf())
-    }
-}
-
-#[cfg(test)]
-impl FileSystem for TestFileSystem {
-    fn root(&self) -> PathBuf {
-        self.root.clone()
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
 
     #[test]
     fn test_file_system() {
-        let temp_dir = TempDir::new().unwrap();
-        let fs = TestFileSystem::new(temp_dir.path().to_path_buf());
+        let fs = FileSystem::new_test();
+        let temp_dir = fs.root();
 
-        assert_eq!(fs.app_data_directory(), temp_dir.path().join("app-data"));
-        assert_eq!(fs.vaults_folder(), temp_dir.path().join("vaults"));
+        assert_eq!(fs.app_data_directory(), temp_dir.join("app-data"));
+        assert_eq!(fs.vaults_folder(), temp_dir.join("vaults"));
         assert_eq!(
             fs.vault_folder("test"),
-            temp_dir.path().join("vaults").join("test.vault")
+            temp_dir.join("vaults").join("test.vault")
         );
     }
 }

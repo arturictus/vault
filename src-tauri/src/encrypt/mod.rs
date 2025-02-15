@@ -1,7 +1,7 @@
 pub mod rsa;
 mod error;
 pub use error::{Error, Result};
-use crate::file_system::{FileSystem, DefaultFileSystem};
+use crate::file_system::FileSystem;
 use crate::master_password;
 use std::fs;
 use std::path::Path;
@@ -54,12 +54,12 @@ impl Encryptor {
     // internal functions
     fn get_pk(state: AppState) -> Result<rsa::Encryptor> {
         let master_password = state.master_password().ok_or(Error::NoMasterPassword)?;
-        let fs = DefaultFileSystem::default();
+        let fs = state.file_system();
         let pk = Self::do_get_pk(&master_password, &fs)?;
         Ok(pk)
     }
     
-    fn do_get_pk<T: FileSystem>(master_password: &str, fs: &T) -> Result<rsa::Encryptor> {
+    fn do_get_pk(master_password: &str, fs: &FileSystem) -> Result<rsa::Encryptor> {
         let password_encryptor = master_password::do_get_encryptor(fs, master_password)?;
         let encrypted_pk = fs::read(fs.master_pk())
             .map_err(|_e| Error::Io("Unable to read file with master privatekey".to_string()))?;

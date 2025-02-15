@@ -1,9 +1,9 @@
 mod error;
 mod vault;
-pub use error::Result;
-use vault::{Vault, VaultFs};
-use tauri::State;
-use crate::{AppState, Encryptor};
+pub use error::{Result, Error};
+use vault::Vault;
+
+use crate::{State, AppState, Encryptor};
 use std::sync::Mutex;
 
 use std::fs;
@@ -27,9 +27,11 @@ pub struct Secret {
 }
 
 #[tauri::command]
-pub fn create_secret(data: SecretForm) -> Result<String> {
+pub fn create_secret(state: State, data: SecretForm) -> Result<String> {
     println!("Received secret: {:?}", data);
-    let vault = Vault::new("default".to_string());
+    let state = state.lock().map_err(|e| Error::AppStateLock(e.to_string()))?;
+    let fs = state.file_system();
+    let vault = Vault::new("default".to_string(), fs.clone());
     let secret = Secret {
         id: Uuid::new_v4().to_string(),
         kind: data.kind,
@@ -51,11 +53,14 @@ fn store_secret(vault: &Vault, secret: &Secret) -> Result<()> {
 }
 
 #[tauri::command]
-pub fn get_secret(state: State<'_, Mutex<AppState>>, id: &str) -> Result<Secret> {
-    let vault = Vault::new("default".to_string());
+pub fn get_secret(state: State, id: &str) -> Result<Secret> {
+    let state = state.lock().map_err(|e| Error::AppStateLock(e.to_string()))?;
+    let fs = state.file_system();
+    let vault = Vault::new("default".to_string(), fs.clone());
     let secret = read_secret(&vault, id)?;
     Ok(secret)
 }
+
 
 fn read_secret(vault: &Vault, id: &str) -> Result<Secret> {
     let encryptor = Encryptor::from_file(vault.pk_path().as_path())?;
@@ -69,8 +74,10 @@ fn read_secret(vault: &Vault, id: &str) -> Result<Secret> {
 }
 
 #[tauri::command]
-pub fn get_secrets() -> Result<Vec<Secret>> {
-    let vault = Vault::new("default".to_string());
+pub fn get_secrets(state: State) -> Result<Vec<Secret>> {
+    let state = state.lock().map_err(|e| Error::AppStateLock(e.to_string()))?;
+    let fs = state.file_system();
+    let vault = Vault::new("default".to_string(), fs.clone());
     let secrets = do_get_secrets(vault)?;
     Ok(secrets)
 }
@@ -101,10 +108,10 @@ fn do_get_secrets(vault: Vault) -> Result<Vec<Secret>> {
 #[cfg(test)]
 mod tests {
     
-    use crate::file_system::{TestFileSystem, FileSystem};
+    use crate::file_system::FileSystem;
 
-    fn setup() -> TestFileSystem {
-        let fs = TestFileSystem::default();
+    fn setup() -> FileSystem {
+        let fs = FileSystem::new_test();
         fs.init().unwrap();
         fs
     }

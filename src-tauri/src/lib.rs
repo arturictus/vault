@@ -6,7 +6,7 @@ mod master_password;
 mod secrets;
 mod error;
 mod app_state;
-use file_system::{FileSystem, DefaultFileSystem};
+pub use file_system::FileSystem;
 pub use error::{Error, Result};
 use tauri::Manager;
 
@@ -35,7 +35,7 @@ pub fn run() {
         .setup(|app| {
             // Initialize AppState first
             app.manage(Mutex::new(AppState::default()));
-            let fs = DefaultFileSystem::default();
+            let fs = FileSystem::default();
             // Initialize file system
             fs.init()?;
 

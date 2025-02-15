@@ -1,21 +1,19 @@
 use std::fmt;
 use std::sync::Mutex;
-use crate::file_system::{DefaultFileSystem, FileSystem};
-#[cfg(test)]
-use crate::file_system::TestFileSystem;
+use crate::file_system::FileSystem;
 
 #[derive(Default)]
 pub struct ProductionState {
     master_password: Option<String>,
     authenticated: bool,
-    fs: DefaultFileSystem,
+    fs: FileSystem,
 }
 
 #[cfg(test)]
 pub struct TestState {
     master_password: Option<String>,
     authenticated: bool,
-    fs: TestFileSystem,
+    fs: FileSystem,
     _temp_dir: tempfile::TempDir, // Keep temp_dir alive for test duration
 }
 
@@ -34,11 +32,14 @@ impl Default for AppState {
 impl AppState {
     #[cfg(test)]
     pub fn new_test(password: &str) -> Self {
+        // TODO: 
+        // - generate and store master password in temp
+        // - generate and store master private key in temp encrypted with master password
         use std::fs;
         use crate::encrypt::rsa;
         
         let temp_dir = tempfile::TempDir::new().unwrap();
-        let fs = TestFileSystem::new(temp_dir.path().to_path_buf());
+        let fs = FileSystem::new_test();
 
         // Initialize file system with test keys
         let encryptor = rsa::Encryptor::new().unwrap();
@@ -94,7 +95,7 @@ impl AppState {
         }
     }
 
-    pub fn file_system(&self) -> &dyn FileSystem {
+    pub fn file_system(&self) -> &FileSystem {
         match self {
             AppState::Production(state) => &state.fs,
             #[cfg(test)]

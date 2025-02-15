@@ -1,21 +1,20 @@
 mod error;
 mod password_encryptor;
 use crate::encrypt::Encryptor;
-use crate::{file_system::DefaultFileSystem, file_system::FileSystem, AppState};
+use crate::{FileSystem, State};
 pub use error::{Error, Result};
 use password_encryptor::PasswordEncryptor;
 use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
-use tauri::State;
 
 #[tauri::command]
 pub fn save_master_password(
-    state: State<'_, Mutex<AppState>>,
+    state: State,
     password: &str,
     private_key: Option<&str>,
 ) -> Result<String> {
-    let fs = DefaultFileSystem::default();
+    let fs = FileSystem::default();
     let encryptor = store_master_password(&fs, password)?;
     let pk = match private_key {
         Some(pk) => Encryptor::from_string(pk)?,
@@ -29,7 +28,7 @@ pub fn save_master_password(
     Ok("Master password saved".to_string())
 }
 
-fn store_master_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
+fn store_master_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
     let encryptor = PasswordEncryptor::new(password);
     let encrypted = encryptor.encrypt(password.as_bytes())?;
     let path = fs.master_password();
@@ -37,8 +36,8 @@ fn store_master_password<T: FileSystem>(fs: &T, password: &str) -> Result<Passwo
     Ok(encryptor)
 }
 
-fn store_pk<T: FileSystem>(
-    fs: &T,
+fn store_pk(
+    fs: &FileSystem,
     pk: Encryptor,
     password_encryptor: PasswordEncryptor,
 ) -> Result<()> {
@@ -55,8 +54,8 @@ fn store_pk<T: FileSystem>(
 }
 
 #[tauri::command]
-pub fn verify_master_password(state: State<'_, Mutex<AppState>>, password: &str) -> Result<String> {
-    let fs = DefaultFileSystem::default();
+pub fn verify_master_password(state: State, password: &str) -> Result<String> {
+    let fs = FileSystem::default();
     println!("Verifying master password {}", password);
     match do_verify_password(&fs, password) {
         Ok(_) => {
@@ -73,7 +72,7 @@ pub fn verify_master_password(state: State<'_, Mutex<AppState>>, password: &str)
 
 
 
-fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
+fn do_verify_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
     let path = fs.master_password();
     let encoded = fs::read_to_string(path)?;
 
@@ -84,8 +83,8 @@ fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordE
 }
 
 // TODO: test
-pub fn get_encryptor(state: State<'_, Mutex<AppState>>) -> Result<PasswordEncryptor> {
-    let fs = DefaultFileSystem::default();
+pub fn get_encryptor(state: State) -> Result<PasswordEncryptor> {
+    let fs = FileSystem::default();
     let state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
     let master_password = state.master_password()
         .ok_or(Error::NoMasterPassword)?;
@@ -94,17 +93,16 @@ pub fn get_encryptor(state: State<'_, Mutex<AppState>>) -> Result<PasswordEncryp
 }
 
 // TODO: test
-pub fn do_get_encryptor<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
+pub fn do_get_encryptor(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
     do_verify_password(fs, password)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::file_system::TestFileSystem;
 
-    fn setup() -> TestFileSystem {
-        let fs = TestFileSystem::default();
+    fn setup() -> FileSystem {
+        let fs = FileSystem::new_test();
         fs.init().unwrap();
         fs
     }

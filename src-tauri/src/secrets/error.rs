@@ -6,6 +6,7 @@ pub enum Error {
     Json(String),
     EncryptMod(String),
     Io(String),
+    AppStateLock(String)
 }
 
 impl From<serde_json::Error> for Error {
