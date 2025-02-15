@@ -2,6 +2,9 @@ mod error;
 mod vault;
 pub use error::Result;
 use vault::{Vault, VaultFs};
+use tauri::State;
+use crate::AppState;
+use std::sync::Mutex;
 
 use std::fs;
 use uuid::Uuid;
@@ -47,7 +50,7 @@ fn store_secret(vault: &Vault, secret: &Secret) -> Result<()> {
 }
 
 #[tauri::command]
-pub fn get_secret(id: &str) -> Result<Secret> {
+pub fn get_secret(state: State<'_, Mutex<AppState>>, id: &str) -> Result<Secret> {
     let vault = Vault::new("default".to_string());
     let secret = read_secret(&vault, id)?;
     Ok(secret)

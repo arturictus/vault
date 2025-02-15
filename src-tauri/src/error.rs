@@ -9,6 +9,7 @@ pub enum Error {
   TauriInit(String),
   Custom(String),
   Encryption(String),
+  Io(String),
 }
 
 impl core::fmt::Display for Error {

@@ -35,6 +35,7 @@ pub trait FileSystem: Send + Sync {
         self.vaults_folder().join(vault_folder)
     }
 
+    // TODO: Change Result to crate::Error::TauriInit
     fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
         let app_dir = self.app_data_directory();
         std::fs::create_dir_all(&app_dir)?;
@@ -42,11 +43,6 @@ pub trait FileSystem: Send + Sync {
         std::fs::create_dir_all(&vaults_dir)?;
         let default_vault_dir = self.vault_folder("default");
         std::fs::create_dir_all(&default_vault_dir)?;
-        let pk_for_default_vault = self.pk_for_vault("default");
-        let pk_for_default_path = Path::new(&pk_for_default_vault);
-        if !pk_for_default_path.exists() {
-            crate::encrypt::create_pk_at_path(pk_for_default_path)?;
-        }
         Ok(())
     }
 }

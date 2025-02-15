@@ -71,6 +71,8 @@ pub fn verify_master_password(state: State<'_, Mutex<AppState>>, password: &str)
     }
 }
 
+
+
 fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
     let path = fs.master_password();
     let encoded = fs::read_to_string(path)?;
@@ -79,6 +81,22 @@ fn do_verify_password<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordE
 
     encryptor.decrypt(&encoded)?;
     Ok(encryptor)
+}
+
+// TODO: test
+pub fn get_encryptor(state: State<'_, Mutex<AppState>>) -> Result<PasswordEncryptor> {
+    let fs = DefaultFileSystem::default();
+    let state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
+    let master_password = state.master_password
+        .as_ref()
+        .ok_or(Error::NoMasterPassword)?;
+    let encryptor = do_get_encryptor(&fs, &master_password)?;
+    Ok(encryptor)
+}
+
+// TODO: test
+pub fn do_get_encryptor<T: FileSystem>(fs: &T, password: &str) -> Result<PasswordEncryptor> {
+    do_verify_password(fs, password)
 }
 
 #[cfg(test)]

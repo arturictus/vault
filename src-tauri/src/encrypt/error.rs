@@ -1,5 +1,6 @@
 use thiserror::Error;
 pub type Result<T> = core::result::Result<T, Error>;
+use crate::master_password;
 
 #[derive(Error, Debug, serde::Serialize)]
 pub enum Error {
@@ -7,12 +8,20 @@ pub enum Error {
     Base64(String),
     BadUTF8(String),
     Io(String),
+    NoMasterPassword,
+    StateLock(String)
 }
 
 // --- Rsa errors
 impl From<rsa::errors::Error> for Error {
     fn from(e: rsa::errors::Error) -> Self {
         Error::Rsa(e.to_string())
+    }
+}
+
+impl From<master_password::Error> for Error {
+    fn from(_e: master_password::Error) -> Self {
+        Error::NoMasterPassword
     }
 }
 
