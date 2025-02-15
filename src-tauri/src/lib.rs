@@ -5,31 +5,17 @@ mod file_system;
 mod master_password;
 mod secrets;
 mod error;
+mod app_state;
 use file_system::{FileSystem, DefaultFileSystem};
 pub use error::{Error, Result};
 
 use std::sync::Mutex;
 
-use tauri::Manager;
-
-#[derive(serde::Serialize)]
-#[derive(Default)]
-struct AppState {
-    master_password: Option<String>,
-    authenticated: bool,
-}
-
-impl fmt::Debug for AppState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        serde_json::to_string(self)
-            .map_err(|_e| fmt::Error)
-            .and_then(|s| write!(f, "{}", s))
-    }
-}
+pub use app_state::{State};
 
 
 #[tauri::command]
-fn is_authenticated(state: tauri::State<'_, Mutex<AppState>>) -> Result<bool> {
+fn is_authenticated(state: State) -> Result<bool> {
     println!("Checking if authenticated");
     let state = state.lock()?;
     if state.authenticated {
