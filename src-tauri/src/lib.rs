@@ -1,4 +1,4 @@
-use std::fmt;
+
 use tauri_plugin_fs::FsExt;
 mod encrypt;
 mod file_system;
@@ -8,17 +8,18 @@ mod error;
 mod app_state;
 use file_system::{FileSystem, DefaultFileSystem};
 pub use error::{Error, Result};
+use tauri::Manager;
 
 use std::sync::Mutex;
 
-pub use app_state::{State};
+pub use app_state::{AppState, State};
 
 
 #[tauri::command]
 fn is_authenticated(state: State) -> Result<bool> {
     println!("Checking if authenticated");
     let state = state.lock()?;
-    if state.authenticated {
+    if state.is_authenticated() {
         println!("====> true");
         Ok(true)
     } else {
