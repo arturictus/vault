@@ -3,7 +3,7 @@ mod vault;
 pub use error::Result;
 use vault::{Vault, VaultFs};
 use tauri::State;
-use crate::AppState;
+use crate::{AppState, Encryptor};
 use std::sync::Mutex;
 
 use std::fs;
@@ -40,10 +40,11 @@ pub fn create_secret(data: SecretForm) -> Result<String> {
     Ok("Submitted secret".to_string())
 }
 
-
+// TODO: This is just temporary. We need to use a proper encrypt::Encryptor
 fn store_secret(vault: &Vault, secret: &Secret) -> Result<()> {
     let json = serde_json::to_string(secret)?;
-    let encrypted = encrypt::encrypt_string(vault.pk_path().as_path(), &json)?;
+    let encryptor = Encryptor::from_file(vault.pk_path().as_path())?;
+    let encrypted = encryptor.encrypt_string(&json)?;
     let out_path = vault.secret_path(&secret.id);
     fs::write(out_path, encrypted)?;
     Ok(())
@@ -57,11 +58,12 @@ pub fn get_secret(state: State<'_, Mutex<AppState>>, id: &str) -> Result<Secret>
 }
 
 fn read_secret(vault: &Vault, id: &str) -> Result<Secret> {
-    let pk_path = vault.pk_path();
+    let encryptor = Encryptor::from_file(vault.pk_path().as_path())?;
+
     let secret_path = vault.secret_path(id);
     let encrypted = fs::read_to_string(secret_path)?;
     let decrypted =
-        encrypt::decrypt_string(pk_path.as_path(), &encrypted)?;
+        encryptor.decrypt_string(&encrypted)?;
     let secret: Secret = serde_json::from_str(&decrypted)?;
     Ok(secret)
 }
@@ -74,7 +76,7 @@ pub fn get_secrets() -> Result<Vec<Secret>> {
 }
 
 fn do_get_secrets(vault: Vault) -> Result<Vec<Secret>> {
-    let pk_path = vault.pk_path();
+    let encryptor = Encryptor::from_file(vault.pk_path().as_path())?;
     let secret_dir = vault.path();
     let mut secrets = vec![];
     for entry in fs::read_dir(secret_dir)? {
@@ -88,7 +90,7 @@ fn do_get_secrets(vault: Vault) -> Result<Vec<Secret>> {
         {
             let path = entry.path();
             let encrypted = fs::read_to_string(&path)?;
-            let decrypted = encrypt::decrypt_string(pk_path.as_path(), &encrypted)?;
+            let decrypted = encryptor.decrypt_string(&encrypted)?;
             let secret: Secret = serde_json::from_str(&decrypted)?;
             secrets.push(secret);
         }

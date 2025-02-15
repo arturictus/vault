@@ -4,13 +4,6 @@ use crate::file_system::{DefaultFileSystem, FileSystem};
 #[cfg(test)]
 use crate::file_system::TestFileSystem;
 
-pub trait AppStateCommon {
-    type FS: FileSystem;
-    fn master_password(&self) -> Option<&String>;
-    fn is_authenticated(&self) -> bool;
-    fn file_system(&self) -> &Self::FS;
-}
-
 #[derive(Default)]
 pub struct ProductionState {
     master_password: Option<String>,
@@ -63,11 +56,17 @@ impl AppState {
         })
     }
 
-    pub fn master_password(&self) -> Option<&String> {
+    #[cfg(test)]
+    pub fn new_tauri_test() -> Mutex<AppState> {
+        let state = Self::new_test("password");
+        Mutex::new(state)
+    }
+
+    pub fn master_password(&self) -> Option<String> {
         match self {
-            AppState::Production(state) => state.master_password.as_ref(),
+            AppState::Production(state) => state.master_password.clone(),
             #[cfg(test)]
-            AppState::Test(state) => state.master_password.as_ref(),
+            AppState::Test(state) => state.master_password.clone(),
         }
     }
 

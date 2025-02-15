@@ -1,36 +1,61 @@
 pub mod rsa;
-use std::path::Path;
 mod error;
 pub use error::{Error, Result};
 use crate::file_system::{FileSystem, DefaultFileSystem};
 use crate::master_password;
 use std::fs;
-use crate::State;
+use std::path::Path;
+use crate::AppState;
 
-struct Encryptor {
+pub struct Encryptor {
     pk: rsa::Encryptor,
 }
 
 impl Encryptor {
-    fn from_state(state: State) -> Result<Self> {
+    pub fn new() -> Result<Self> {
+        let encryptor = rsa::Encryptor::new()?;
+        Ok(Self { pk: encryptor })
+    }
+
+    pub fn from_state(state: AppState) -> Result<Self> {
         let pk = Self::get_pk(state)?;
         Ok(Self { pk })
     }
 
-    fn encrypt_string(&self, input: &str) -> Result<String> {
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let clear_pk = fs::read(path)
+            .map_err(|_e| Error::Io("Unable to read file".to_string()))?;
+        let pk = String::from_utf8_lossy(&clear_pk);
+        let pk = rsa::Encryptor::from_string(&pk)?;
+        Ok(Self { pk })
+    }
+
+    pub fn from_string(pk: &str) -> Result<Self> {
+        let pk = rsa::Encryptor::from_string(pk)?;
+        Ok(Self { pk })
+    }
+
+    pub fn encrypt_string(&self, input: &str) -> Result<String> {
         self.pk.encrypt_string(input)
     }
 
-    fn decrypt_string(&self, input: &str) -> Result<String> {
+    pub fn decrypt_string(&self, input: &str) -> Result<String> {
         self.pk.decrypt_string(input)
     }
 
+    pub fn private_key_pem(&self) -> Result<String> {
+        self.pk.private_key_pem()
+    }
+
+    pub fn public_key_pem(&self) -> Result<String> {
+        self.pk.public_key_pem()
+    }
+
     // internal functions
-    fn get_pk(state: State) -> Result<rsa::Encryptor> {
-        let state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
-        let master_password = state.master_password.as_ref().ok_or(Error::NoMasterPassword)?;
+    fn get_pk(state: AppState) -> Result<rsa::Encryptor> {
+        let master_password = state.master_password().ok_or(Error::NoMasterPassword)?;
         let fs = DefaultFileSystem::default();
-        let pk = Self::do_get_pk(master_password, &fs)?;
+        let pk = Self::do_get_pk(&master_password, &fs)?;
         Ok(pk)
     }
     
@@ -45,21 +70,6 @@ impl Encryptor {
     }
 }
 
-pub fn create_pk() -> Result<rsa::Encryptor> {
-    let encryptor = rsa::Encryptor::new()?;
-    Ok(encryptor)
-}
-
-pub fn encrypt_string(pk_path: &Path, input: &str) -> Result<String> {
-    let encryptor = rsa::Encryptor::from_file(pk_path)?;
-    encryptor.encrypt_string(input)
-}
-
-pub fn decrypt_string(pk_path: &Path, input: &str) -> Result<String> {
-    let encryptor = rsa::Encryptor::from_file(pk_path)?;
-    encryptor.decrypt_string(input)
-}
-
 
 
 
@@ -70,10 +80,8 @@ mod test {
     use crate::AppState;
     use std::sync::Mutex;
     
-    fn state() -> State<'static> {
-        let state = AppState{master_password: Some("password".to_string()), authenticated: true};
-        let state = Mutex::new(state);
-        State::from(state)
+    fn state() -> AppState {
+        AppState::new_test("password")
     }
 
     #[test]

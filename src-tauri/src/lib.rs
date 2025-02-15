@@ -13,6 +13,7 @@ use tauri::Manager;
 use std::sync::Mutex;
 
 pub use app_state::{AppState, State};
+pub use encrypt::Encryptor;
 
 
 #[tauri::command]
