@@ -1,6 +1,8 @@
 use std::fmt;
 use std::sync::Mutex;
 use crate::file_system::FileSystem;
+use crate::master_password;
+use crate::Encryptor;
 
 #[derive(Default)]
 pub struct ProductionState {
@@ -40,14 +42,17 @@ impl AppState {
         
         let temp_dir = tempfile::TempDir::new().unwrap();
         let fs = FileSystem::new_test(temp_dir.path().to_path_buf());
-
+        // Initialize master password
+        let password_encryptor = master_password::store_master_password(&fs, password).unwrap();
         // Initialize file system with test keys
-        let encryptor = rsa::Encryptor::new().unwrap();
+        let encryptor = Encryptor::new().unwrap();
         fs::create_dir_all(fs.root()).unwrap();
 
         // Save test master key
-        let pk = encryptor.private_key_pem().unwrap();
-        fs::write(fs.master_pk(), pk).unwrap();
+        master_password::store_pk(&fs, encryptor, password_encryptor).unwrap();
+        // let pk = encryptor.private_key_pem().unwrap();
+        // let pk = password_encryptor.encrypt(pk.as_bytes()).unwrap();
+        // fs::write(fs.master_pk(), pk).unwrap();
 
         AppState::Test(TestState {
             master_password: Some(password.to_string()),

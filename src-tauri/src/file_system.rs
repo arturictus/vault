@@ -7,7 +7,7 @@ pub struct FileSystem {
 
 impl Default for FileSystem {
     fn default() -> Self {
-        let root = dirs::data_dir().unwrap().join(".vault");
+        let root = dirs::home_dir().map(|home| home.join(".vault")).unwrap();
         Self { root }
     }
 }
@@ -16,8 +16,9 @@ impl FileSystem {
 
     #[cfg(test)] 
     pub fn new_test(temp_dir: PathBuf) -> Self {
+
         let inst = Self {
-            root: temp_dir,
+            root: temp_dir.join(".vault"),
         };
         inst.init().unwrap();
         inst

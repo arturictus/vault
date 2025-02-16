@@ -9,7 +9,10 @@ pub enum Error {
     BadUTF8(String),
     Io(String),
     NoMasterPassword,
-    StateLock(String)
+    StateLock(String),
+    Custom(String),
+    MasterPassword(master_password::Error),
+
 }
 
 // --- Rsa errors
@@ -20,8 +23,8 @@ impl From<rsa::errors::Error> for Error {
 }
 
 impl From<master_password::Error> for Error {
-    fn from(_e: master_password::Error) -> Self {
-        Error::NoMasterPassword
+    fn from(e: master_password::Error) -> Self {
+        Error::MasterPassword(e)
     }
 }
 

@@ -27,7 +27,7 @@ pub fn save_master_password(
     Ok("Master password saved".to_string())
 }
 
-fn store_master_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
+pub fn store_master_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
     let encryptor = PasswordEncryptor::new(password);
     let encrypted = encryptor.encrypt(password.as_bytes())?;
     let path = fs.master_password();
@@ -35,7 +35,7 @@ fn store_master_password(fs: &FileSystem, password: &str) -> Result<PasswordEncr
     Ok(encryptor)
 }
 
-fn store_pk(
+pub fn store_pk(
     fs: &FileSystem,
     pk: Encryptor,
     password_encryptor: PasswordEncryptor,
@@ -90,7 +90,7 @@ pub fn get_encryptor(state: &AppState) -> Result<PasswordEncryptor> {
     println!("{:?}", state);
     let fs = state.file_system();
     let master_password = state.master_password()
-        .ok_or(Error::NoMasterPassword)?;
+        .ok_or(Error::Custom("NoMasterPassword in master_password".to_string()))?;
     let encryptor = do_get_encryptor(&fs, &master_password)?;
     println!("get_encryptor end");
     Ok(encryptor)
@@ -100,14 +100,16 @@ pub fn get_encryptor(state: &AppState) -> Result<PasswordEncryptor> {
 pub fn do_get_encryptor(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
     println!("do_get_encryptor");
     println!("{:?}", fs);
-    do_verify_password(fs, password)
+    let encryptor = do_verify_password(fs, password)?;
+    println!("do_get_encryptor end");
+    Ok(encryptor)
 }
 
-#[cfg(test)]
-pub fn test_setup(state: &AppState, password: &str) -> Result<()> {
-    store_master_password(state.file_system(), password)?;
-    Ok(())
-}
+// #[cfg(test)]
+// pub fn test_setup(state: &AppState, password: &str) -> Result<()> {
+//     store_master_password(state.file_system(), password)?;
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {

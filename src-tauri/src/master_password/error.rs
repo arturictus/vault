@@ -10,7 +10,8 @@ pub enum Error {
     StateLock(String),
     WrongPassword(String),
     Io(String),
-    NoMasterPassword
+    NoMasterPassword,
+    Custom(String)
 }
 
 impl From<crate::encrypt::Error> for Error {
