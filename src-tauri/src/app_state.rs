@@ -39,7 +39,7 @@ impl AppState {
         use crate::encrypt::rsa;
         
         let temp_dir = tempfile::TempDir::new().unwrap();
-        let fs = FileSystem::new_test();
+        let fs = FileSystem::new_test(temp_dir.path().to_path_buf());
 
         // Initialize file system with test keys
         let encryptor = rsa::Encryptor::new().unwrap();

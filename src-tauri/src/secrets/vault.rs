@@ -30,28 +30,15 @@ impl Vault {
     }
 }
 
-
-
-#[cfg(test)]
-pub struct TestVault {
-    name: String,
-    fs: FileSystem
-}
-
-#[cfg(test)]
-impl TestVault {
-    pub fn new(name: String) -> Self {
-        Self { name,  fs: FileSystem::new_test() }
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
+
     use super::*;
 
     fn setup() -> Vault {
-        let fs = FileSystem::new_test();
+        let temp_dir = TempDir::new().unwrap();
+        let fs = FileSystem::new_test(temp_dir.path().to_path_buf());
         Vault::new("test".to_string(), fs)
     }
 

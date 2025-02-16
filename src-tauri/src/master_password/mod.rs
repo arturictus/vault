@@ -6,7 +6,6 @@ pub use error::{Error, Result};
 use password_encryptor::PasswordEncryptor;
 use std::fs;
 use std::path::Path;
-use std::sync::Mutex;
 
 #[tauri::command]
 pub fn save_master_password(
@@ -98,26 +97,36 @@ pub fn do_get_encryptor(fs: &FileSystem, password: &str) -> Result<PasswordEncry
 }
 
 #[cfg(test)]
+use crate::AppState;
+#[cfg(test)]
+pub fn test_setup(state: &AppState, password: &str) -> Result<()> {
+    store_master_password(state.file_system(), password)?;
+    Ok(())
+}
+
+#[cfg(test)]
 mod tests {
+    use crate::AppState;
+
     use super::*;
 
-    fn setup() -> FileSystem {
-        let fs = FileSystem::new_test();
-        fs.init().unwrap();
-        fs
+    fn setup() -> AppState {
+        AppState::new_test("secret")
     }
     #[test]
     fn test_store_master_password() {
         let password = "secret";
-        let fs = setup();
-        store_master_password(&fs, password).unwrap();
-        do_verify_password(&fs, password).unwrap();
+        let app_state = setup();
+        let fs = app_state.file_system();
+        store_master_password(fs, password).unwrap();
+        do_verify_password(fs, password).unwrap();
     }
 
     #[test]
     fn test_verify_password() {
-        let fs = setup();
-        let result = do_verify_password(&fs, "secret");
+        let app_state = setup();
+        let fs = app_state.file_system();
+        let result = do_verify_password(fs, "secret");
         assert!(result.is_err());
     }
 }

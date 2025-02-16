@@ -3,13 +3,11 @@ mod vault;
 pub use error::{Result, Error};
 use vault::Vault;
 
-use crate::{State, AppState, Encryptor};
-use std::sync::Mutex;
+use crate::{State, Encryptor};
 
 use std::fs;
 use uuid::Uuid;
 
-use crate::encrypt;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct SecretForm {
@@ -108,12 +106,12 @@ fn do_get_secrets(vault: Vault) -> Result<Vec<Secret>> {
 #[cfg(test)]
 mod tests {
     
-    use crate::file_system::FileSystem;
+    
 
-    fn setup() -> FileSystem {
-        let fs = FileSystem::new_test();
-        fs.init().unwrap();
-        fs
+    use crate::AppState;
+
+    fn setup() -> AppState {
+        AppState::new_test("secret")
     }
     #[test]
     fn test_store_master_password() {}

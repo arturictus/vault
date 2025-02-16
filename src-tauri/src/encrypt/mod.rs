@@ -55,7 +55,7 @@ impl Encryptor {
     fn get_pk(state: AppState) -> Result<rsa::Encryptor> {
         let master_password = state.master_password().ok_or(Error::NoMasterPassword)?;
         let fs = state.file_system();
-        let pk = Self::do_get_pk(&master_password, &fs)?;
+        let pk = Self::do_get_pk(&master_password, fs)?;
         Ok(pk)
     }
     
@@ -78,14 +78,19 @@ impl Encryptor {
 mod test {
     use super::*;
     use crate::AppState;
-    use std::sync::Mutex;
+    use crate::master_password;
     
     fn state() -> AppState {
-        AppState::new_test("password")
+        let password = "password";
+        let state = AppState::new_test("password");
+        master_password::test_setup(&state, password).unwrap();
+        state
     }
 
     #[test]
     fn test_get_pk() {
-        Encryptor::from_state(state()).unwrap();
+        let state = state();
+        println!("{:?}", state.master_password());
+        Encryptor::from_state(state).unwrap();
     }
 }

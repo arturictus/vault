@@ -1,8 +1,5 @@
 use std::path::PathBuf;
 
-#[cfg(test)]
-use tempfile::TempDir;
-
 #[derive(Clone)]
 pub struct FileSystem {
     root: PathBuf,
@@ -10,7 +7,7 @@ pub struct FileSystem {
 
 impl Default for FileSystem {
     fn default() -> Self {
-        let root = dirs::data_dir().unwrap().join("tauri");
+        let root = dirs::data_dir().unwrap().join(".vault");
         Self { root }
     }
 }
@@ -18,10 +15,9 @@ impl Default for FileSystem {
 impl FileSystem {
 
     #[cfg(test)] 
-    pub fn new_test() -> Self {
-        let temp_dir = TempDir::new().unwrap();
+    pub fn new_test(temp_dir: PathBuf) -> Self {
         let inst = Self {
-            root: temp_dir.path().to_path_buf(),
+            root: temp_dir,
         };
         inst.init().unwrap();
         inst
@@ -76,10 +72,14 @@ impl FileSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use tempfile::TempDir;
+    fn setup() -> FileSystem {
+        let temp_dir = TempDir::new().unwrap();
+        FileSystem::new_test(temp_dir.path().to_path_buf())
+    }
     #[test]
     fn test_file_system() {
-        let fs = FileSystem::new_test();
+        let fs = setup();
         let temp_dir = fs.root();
 
         assert_eq!(fs.app_data_directory(), temp_dir.join("app-data"));
