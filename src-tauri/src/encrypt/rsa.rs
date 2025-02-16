@@ -8,6 +8,7 @@ use std::fs;
 use std::path::Path;
 use crate::encrypt::Result;
 
+#[derive(Debug)]
 pub struct Encryptor {
     pub private_key: RsaPrivateKey,
     pub public_key: RsaPublicKey,
