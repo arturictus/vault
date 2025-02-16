@@ -72,36 +72,27 @@ pub fn verify_master_password(state: State, password: &str) -> Result<String> {
 
 
 fn do_verify_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
-    println!("do_verify_password");
     let path = fs.master_password();
     let encoded = fs::read_to_string(path)?;
-    println!("do_verify_password: encoded: {:?}", encoded);
 
     let encryptor = PasswordEncryptor::from_encrypted(password, &encoded)?;
 
     encryptor.decrypt(&encoded)?;
-    println!("do_verify_password end");
     Ok(encryptor)
 }
 
 // TODO: test
 pub fn get_encryptor(state: &AppState) -> Result<PasswordEncryptor> {
-    println!("get_encryptor");
-    println!("{:?}", state);
     let fs = state.file_system();
     let master_password = state.master_password()
         .ok_or(Error::Custom("NoMasterPassword in master_password".to_string()))?;
     let encryptor = do_get_encryptor(&fs, &master_password)?;
-    println!("get_encryptor end");
     Ok(encryptor)
 }
 
 // TODO: test
 pub fn do_get_encryptor(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
-    println!("do_get_encryptor");
-    println!("{:?}", fs);
     let encryptor = do_verify_password(fs, password)?;
-    println!("do_get_encryptor end");
     Ok(encryptor)
 }
 

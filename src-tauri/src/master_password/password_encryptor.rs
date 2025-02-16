@@ -89,7 +89,6 @@ impl PasswordEncryptor {
     }
 
     pub fn decrypt(&self, encoded: &str) -> Result<Vec<u8>> {
-        println!("92 password_encryptor--- decrypting");
         let data = BASE64.decode(encoded.as_bytes())?;
         if data.len() < 16 {
             return Err(Error::DecryptPassword(
@@ -119,7 +118,6 @@ impl PasswordEncryptor {
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
             .map_err(|e| Error::DecryptPassword(e.to_string()))?;
-        println!("118 password_encryptor--- end decrypting");
         Ok(plaintext)
     }
 }
