@@ -134,6 +134,8 @@ mod tests {
         let app_state = setup();
         let fs = app_state.file_system();
         let result = do_verify_password(fs, "secret");
+        assert!(result.is_ok());
+        let result = do_verify_password(fs, "wrong");
         assert!(result.is_err());
     }
 }
