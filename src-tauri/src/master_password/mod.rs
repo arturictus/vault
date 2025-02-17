@@ -15,12 +15,12 @@ pub fn save_master_password(
 ) -> Result<String> {
     let mut state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
     let fs = state.file_system();
-    let encryptor = store_master_password(&fs, password)?;
+    let encryptor = store_master_password(fs, password)?;
     let pk = match private_key {
         Some(pk) => Encryptor::from_string(pk)?,
         None => Encryptor::new()?,
     };
-    store_pk(&fs, pk, encryptor)?;
+    store_pk(fs, pk, encryptor)?;
     state.set_master_password(password.to_string());
     state.set_authenticated(true);
 
@@ -57,7 +57,7 @@ pub fn verify_master_password(state: State, password: &str) -> Result<String> {
     let mut state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
     let fs = state.file_system();
     println!("Verifying master password {}", password);
-    match do_verify_password(&fs, password) {
+    match do_verify_password(fs, password) {
         Ok(_) => {
             state.set_master_password(password.to_string());
             state.set_authenticated(true);
@@ -86,7 +86,7 @@ pub fn get_encryptor(state: &AppState) -> Result<PasswordEncryptor> {
     let fs = state.file_system();
     let master_password = state.master_password()
         .ok_or(Error::Custom("NoMasterPassword in master_password".to_string()))?;
-    let encryptor = do_get_encryptor(&fs, &master_password)?;
+    let encryptor = do_get_encryptor(fs, &master_password)?;
     Ok(encryptor)
 }
 

@@ -24,6 +24,7 @@
         <Button href="/first_setup">First setup</Button>
         <Button href="/settings/new_pk">New PK</Button>
         <Button href="/settings">Settings</Button>
+        <Button href="/secrets/create">Create secret</Button>
       </ButtonGroup>
     </main>
   {:else}

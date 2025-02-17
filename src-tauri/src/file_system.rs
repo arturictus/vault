@@ -57,6 +57,10 @@ impl FileSystem {
         self.vaults_folder().join(vault_folder)
     }
 
+    pub fn secret_path(&self, vault_name: &str, secret_id: &str) -> PathBuf {
+        self.vault_folder(vault_name).join(format!("{}.enc", secret_id))
+    }
+
     // TODO: Change Result to crate::Error::TauriInit
     pub fn init(&self) -> Result<(), Box<dyn std::error::Error>> {
         let app_dir = self.app_data_directory();

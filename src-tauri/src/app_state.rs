@@ -1,8 +1,6 @@
 use std::fmt;
 use std::sync::Mutex;
 use crate::file_system::FileSystem;
-use crate::master_password;
-use crate::Encryptor;
 
 #[derive(Default)]
 pub struct ProductionState {
