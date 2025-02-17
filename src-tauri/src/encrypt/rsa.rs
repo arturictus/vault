@@ -4,7 +4,9 @@ use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey, LineEnding, EncodePublicKey},
     Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
 };
+#[cfg(test)]
 use std::fs;
+#[cfg(test)]
 use std::path::Path;
 use crate::encrypt::Result;
 
@@ -25,7 +27,8 @@ impl Encryptor {
             public_key,
         })
     }
-
+   
+    #[cfg(test)]
     pub fn from_file(path: &Path) -> Result<Self> {
         let pem = fs::read_to_string(path)?;
         Self::from_string(&pem)
@@ -41,6 +44,7 @@ impl Encryptor {
         })
     }
 
+    #[cfg(test)]
     pub fn save_to_file(&self, path: &Path) -> Result<()> {
         let pem = self.private_key.to_pkcs8_pem(LineEnding::LF)?;
         fs::write(path, pem.as_bytes())?;

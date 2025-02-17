@@ -32,29 +32,25 @@ impl Default for AppState {
 impl AppState {
     #[cfg(test)]
     pub fn new_test(password: &str) -> Self {
-        // TODO: 
-        // - generate and store master password in temp
-        // - generate and store master private key in temp encrypted with master password
+        use crate::master_password::MasterPassword;
+        // Initialize the empty state
+        let mut state = Self::new_unauthenticated_test();
+        // Save the master password and set authenticated to true
+        MasterPassword::save(&mut state, password, None).unwrap();
+        state
+    }
+    
+    #[cfg(test)]
+    pub fn new_unauthenticated_test() -> Self {
         use std::fs;
-        use crate::encrypt::rsa;
-        
+        // Initialize a temp directory for testing
         let temp_dir = tempfile::TempDir::new().unwrap();
         let fs = FileSystem::new_test(temp_dir.path().to_path_buf());
-        // Initialize master password
-        let password_encryptor = master_password::store_master_password(&fs, password).unwrap();
-        // Initialize file system with test keys
-        let encryptor = Encryptor::new().unwrap();
         fs::create_dir_all(fs.root()).unwrap();
-
-        // Save test master key
-        master_password::store_pk(&fs, encryptor, password_encryptor).unwrap();
-        // let pk = encryptor.private_key_pem().unwrap();
-        // let pk = password_encryptor.encrypt(pk.as_bytes()).unwrap();
-        // fs::write(fs.master_pk(), pk).unwrap();
-
+        // Initialize the empty state
         AppState::Test(TestState {
-            master_password: Some(password.to_string()),
-            authenticated: true,
+            master_password: None,
+            authenticated: false,
             fs,
             _temp_dir: temp_dir,
         })
