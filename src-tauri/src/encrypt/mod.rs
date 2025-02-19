@@ -10,6 +10,12 @@ pub struct Encryptor {
     pk: rsa::Encryptor,
 }
 
+impl From<&AppState> for Encryptor {
+    fn from(state: &AppState) -> Self {
+        Encryptor::from_state(state).unwrap()
+    }
+}
+
 impl Encryptor {
     pub fn new() -> Result<Self> {
         let encryptor = rsa::Encryptor::new()?;
@@ -72,5 +78,11 @@ mod test {
         let state = state();
         let error = Encryptor::from_state(&state);
         assert!(error.is_ok());
+    }
+
+    #[test]
+    fn test_from_trait() {
+        let state = state();
+        assert!(matches!(Encryptor::from(&state), Encryptor { .. }));
     }
 }
