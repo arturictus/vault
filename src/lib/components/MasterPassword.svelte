@@ -45,7 +45,7 @@
                 main_password = ""
                 try {
                     await AppState.refreshAuthState();
-                    if (AppState.isAuthenticated()) { goto("/secrets") }
+                    if (AppState.isAuthenticated()) { goto("/protected/secrets") }
                 } catch (e) {
                     addToast("Error refreshing auth state");
                 }
@@ -89,10 +89,7 @@
             <Button type="submit" size="lg">{loginTitle}</Button>
 
             <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                First time? <span
-                    class="text-primary-700 dark:text-blue-500 hover:underline cursor-pointer font-medium"
-                    onclick={setupFn}>Setup</span
-                >
+                First time? <A href="/account/setup">Setup</A>
             </div>
         </form>
     </Card>

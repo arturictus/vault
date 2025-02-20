@@ -4,6 +4,7 @@
   import AppState, { initPromise } from "$lib/AppState.svelte";
   import MasterPassword from "$lib/components/MasterPassword.svelte";
   import FirstSetup from "$lib/components/FirstSetup.svelte";
+  import { goto } from "$app/navigation";
 
   // Wait for AppState to initialize
   const ready = initPromise.then(() => true);
@@ -14,26 +15,16 @@
 {#await AppState}
   <div>Loading...</div>
 {:then}
-  {#if AppState.isAuthenticated()}
-    <main>
-      {@render children()}
-      <ButtonGroup class="*:!ring-primary-700">
-        <Button href="/authenticate/log_in">Access</Button>
-        <Button href="/">Start page</Button>
-        <Button href="/secrets">Secrets</Button>
-        <Button href="/first_setup">First setup</Button>
-        <Button href="/settings/new_pk">New PK</Button>
-        <Button href="/settings">Settings</Button>
-        <Button href="/secrets/create">Create secret</Button>
-      </ButtonGroup>
-    </main>
-  {:else}
-    {#if setup_page}
-    <button onclick={() => {setup_page = false}}>Back</button>
-      <FirstSetup />
-
-    {:else}
-      <MasterPassword setupFn={() => {setup_page = true}}/>
-    {/if}
-  {/if}
+  <main>
+    {@render children()}
+    <ButtonGroup class="*:!ring-primary-700">
+      <Button href="/account/log_in">Access</Button>
+      <Button href="/">Start page</Button>
+      <Button href="/protected/secrets">Secrets</Button>
+      <Button href="/account/setup">First setup</Button>
+      <Button href="/protected/settings/new_pk">New PK</Button>
+      <Button href="/protected/settings">Settings</Button>
+      <Button href="/protected/secrets/create">Create secret</Button>
+    </ButtonGroup>
+  </main>
 {/await}

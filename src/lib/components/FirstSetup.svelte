@@ -1,11 +1,11 @@
 <script lang="ts">
     import { Section } from "flowbite-svelte-blocks";
-    import { Label, Input, Button, Select, Textarea } from "flowbite-svelte";
+    import { Card, Label, Input, Button, Select, Textarea, A } from "flowbite-svelte";
     import { goto } from "$app/navigation";
     import { invoke } from "@tauri-apps/api/core";
     import appState from "$lib/AppState.svelte";
-    let password = $state();
-    let password_confirmation = $state();
+    let password = $state("");
+    let password_confirmation = $state("");
     let private_key = $state("");
 
     const handleSubmit = () => {
@@ -18,7 +18,7 @@
         invoke("save_master_password", { password, private_key }).then(async () => {
             await appState.refreshAuthState();
             // addToast("Password saved");
-            goto("/secrets");
+            goto("/protected/secrets");
         }).catch((e) => {
             // addToast("Error saving password");
         });
@@ -26,6 +26,7 @@
 </script>
 
 <Section name="crudcreateform">
+    
     <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
         Initial Settings
     </h2>
@@ -66,7 +67,11 @@
                     bind:value={private_key}
                 />
             </div>
-            <Button type="submit" class="w-32">Done</Button>
+            <Button type="submit" class="w-32">Let's Go!</Button>
         </div>
     </form>
+    <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mt-5">
+        Login instead <A href="/account/log_in">Access</A>
+    </div>
+    
 </Section>

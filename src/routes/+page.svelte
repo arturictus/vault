@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { goto } from "$app/navigation";
   import { Button, P } from "flowbite-svelte";
   export let title = "Welcome to Vault";
   export let description =
@@ -34,6 +35,9 @@
       >
         {@html description}
       </P>
+
+      <Button onclick={() => {goto("/account/log_in")}}>Login</Button>
+      <Button onclick={() => {goto("/account/setup")}}>Star New vault</Button>
      
     </div>
   </div>
