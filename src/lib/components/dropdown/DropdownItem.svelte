@@ -16,18 +16,19 @@
         activeClass?: string;
     }
 
-    type $$Props = DropdownItemProps &
+    type Props = DropdownItemProps &
         (HTMLAnchorAttributes | HTMLButtonAttributes);
 
-    export let defaultClass =
-        "font-medium py-2 px-4 text-sm hover:bg-gray-100 dark:hover:bg-gray-600";
-    export let href = undefined;
-    export let activeClass = undefined;
+    let defaultClass = "font-medium py-2 px-4 text-sm hover:bg-gray-100 dark:hover:bg-gray-600";
+    let href = undefined;
+    let activeClass = undefined;
 
     const context = getContext<DropdownType>("DropdownType") ?? {};
     const activeUrlStore = getContext("activeUrl") as {
         subscribe: (callback: (value: string) => void) => void;
     };
+
+    let { children, data, ...restProps } = $props();
 
     // Using $state for reactive variables
     let sidebarUrl = $state("");
@@ -50,7 +51,7 @@
             defaultClass,
             href ? "block" : "w-full text-left",
             active && (activeClass ?? context.activeClass),
-            $$props.class,
+            data.class,
         );
     });
 
@@ -65,7 +66,7 @@
         {href}
         type={href ? undefined : "button"}
         role={href ? "link" : "button"}
-        {...$$restProps}
+        {...restProps}
         class={liClass}
         on:click
         on:change

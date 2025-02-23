@@ -10,6 +10,7 @@
         ImagePlaceholder,
         Skeleton,
         TextPlaceholder,
+        A
     } from "flowbite-svelte";
     import StickyNavbar from "$lib/components/StickyNavbar.svelte";
 
@@ -23,5 +24,6 @@
 </script>
 
 <StickyNavbar >
+    <A href="/sidebar">Sidebar</A>
     {@render children()}
 </StickyNavbar>

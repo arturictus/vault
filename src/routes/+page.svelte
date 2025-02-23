@@ -36,8 +36,8 @@
         {@html description}
       </P>
 
-      <Button onclick={() => {goto("/account/log_in")}}>Login</Button>
-      <Button onclick={() => {goto("/account/setup")}}>Star New vault</Button>
+      <Button onclick={() => {goto("/account/log_in")}}>Access your vault</Button>
+      <Button color="light" onclick={() => {goto("/account/setup")}}>Start New vault</Button>
      
     </div>
   </div>
