@@ -28,6 +28,12 @@ fn is_authenticated(state: State) -> Result<bool> {
         Ok(false)
     }
 }
+#[tauri::command]
+fn log_out(state: State) -> Result<()> {
+    let mut state = state.lock()?;
+    state.log_out();
+    Ok(())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,6 +58,7 @@ pub fn run() {
             secrets::get_secret,
             master_password::save_master_password,
             master_password::verify_master_password,
+            log_out
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
