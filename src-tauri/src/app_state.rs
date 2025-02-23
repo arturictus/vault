@@ -78,6 +78,14 @@ impl AppState {
         }
     }
 
+    pub fn unset_master_password(&mut self) {
+        match self {
+            AppState::Production(state) => state.master_password = None,
+            #[cfg(test)]
+            AppState::Test(state) => state.master_password = None,
+        }
+    }
+
     pub fn is_authenticated(&self) -> bool {
         match self {
             AppState::Production(state) => state.authenticated,
@@ -100,6 +108,11 @@ impl AppState {
             #[cfg(test)]
             AppState::Test(state) => &state.fs,
         }
+    }
+
+    pub fn log_out(&mut self) {
+        self.set_authenticated(false);
+        self.unset_master_password();
     }
 }
 

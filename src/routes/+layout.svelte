@@ -12,19 +12,11 @@
   let authenticated = AppState.isAuthenticated();
   let setup_page = $state(false);
 </script>
-{#await AppState}
-  <div>Loading...</div>
-{:then}
-  <main>
+
+<main class="bg-gray-50 dark:bg-gray-900">
+  {#await AppState}
+    <div>Loading...</div>
+  {:then}
     {@render children()}
-    <ButtonGroup class="*:!ring-primary-700">
-      <Button href="/account/log_in">Access</Button>
-      <Button href="/">Start page</Button>
-      <Button href="/protected/secrets">Secrets</Button>
-      <Button href="/account/setup">First setup</Button>
-      <Button href="/protected/settings/new_pk">New PK</Button>
-      <Button href="/protected/settings">Settings</Button>
-      <Button href="/protected/secrets/create">Create secret</Button>
-    </ButtonGroup>
-  </main>
-{/await}
+  {/await}
+</main>

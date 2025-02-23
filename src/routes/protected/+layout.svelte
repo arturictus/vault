@@ -22,6 +22,5 @@
     });
 </script>
 
-<StickyNavbar >
-    {@render children()}
-</StickyNavbar>
+<StickyNavbar/>
+{@render children()}
