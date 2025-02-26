@@ -119,7 +119,7 @@
   {searchClass}
   inputClass={classInput}
 >
-  <div
+  <!-- <div
     slot="header"
     class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0"
   >
@@ -129,7 +129,7 @@
     <Button color="alternative"
       >Actions<ChevronDownOutline class="w-3 h-3 ml-2" /></Button
     >
-  </div>
+  </div> -->
 
   <TableHead>
     <TableHeadCell padding="px-4 py-3" scope="col">Name</TableHeadCell>
