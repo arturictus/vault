@@ -46,8 +46,6 @@
   let startPage = $state(null);
   let endPage = $state(null);
 
- 
-
   // Function to update the pagination and filter the data
   const updateDataAndPagination = () => {
     const currentPageItems = paginationData.slice(
@@ -112,87 +110,80 @@
   );
 </script>
 
-<Section
-  name="advancedTable"
-  classSection="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5"
+<TableSearch
+  placeholder="Search"
+  hoverable
+  bind:inputValue={searchTerm}
+  class={divClass}
+  innerClass={innerDivClass}
+  {searchClass}
+  inputClass={classInput}
 >
-  <TableSearch
-    placeholder="Search"
-    hoverable
-    bind:inputValue={searchTerm}
-    class={divClass}
-    innerClass={innerDivClass}
-    {searchClass}
-    inputClass={classInput}
+  <div
+    slot="header"
+    class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0"
   >
-    <div
-      slot="header"
-      class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 items-stretch md:items-center justify-end md:space-x-3 flex-shrink-0"
+    <Button color="primary" on:click={() => goto("/secrets/create")}>
+      <PlusOutline class="h-3.5 w-3.5 mr-2" />Add
+    </Button>
+    <Button color="alternative"
+      >Actions<ChevronDownOutline class="w-3 h-3 ml-2" /></Button
     >
-      <Button color="primary" on:click={() => goto("/secrets/create")}>
-        <PlusOutline class="h-3.5 w-3.5 mr-2" />Add
-      </Button>
-      <Button color="alternative"
-        >Actions<ChevronDownOutline class="w-3 h-3 ml-2" /></Button
+  </div>
+
+  <TableHead>
+    <TableHeadCell padding="px-4 py-3" scope="col">Name</TableHeadCell>
+    <TableHeadCell padding="px-4 py-3" scope="col">Type</TableHeadCell>
+    <TableHeadCell padding="px-4 py-3" scope="col">Description</TableHeadCell>
+    <TableHeadCell padding="px-4 py-3" scope="col">security</TableHeadCell>
+  </TableHead>
+  <TableBody class="divide-y">
+    {#if searchTerm}
+      {#each filteredItems as item (item.id)}
+        <TableBodyRow on:click={() => goto(`/secrets/${item.id}`)}>
+          <TableBodyCell tdClass="px-4 py-3">{item.name}</TableBodyCell>
+          <TableBodyCell tdClass="px-4 py-3">{item.kind}</TableBodyCell>
+          <TableBodyCell tdClass="px-4 py-3">{item.description}</TableBodyCell>
+          <TableBodyCell tdClass="px-4 py-3">{item.security}</TableBodyCell>
+        </TableBodyRow>
+      {/each}
+    {:else}
+      {#each currentPageItems as item (item.id)}
+        <TableBodyRow on:click={() => goto(`/secrets/${item.id}`)}>
+          <TableBodyCell tdClass="px-4 py-3">{item.name}</TableBodyCell>
+          <TableBodyCell tdClass="px-4 py-3">{item.kind}</TableBodyCell>
+          <TableBodyCell tdClass="px-4 py-3">{item.description}</TableBodyCell>
+          <TableBodyCell tdClass="px-4 py-3">{item.security}</TableBodyCell>
+        </TableBodyRow>
+      {/each}
+    {/if}
+  </TableBody>
+
+  <div
+    slot="footer"
+    class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4"
+    aria-label="Table navigation"
+  >
+    <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
+      Showing
+      <span class="font-semibold text-gray-900 dark:text-white"
+        >{startRange}-{endRange}</span
       >
-    </div>
-
-    <TableHead>
-      <TableHeadCell padding="px-4 py-3" scope="col">Name</TableHeadCell>
-      <TableHeadCell padding="px-4 py-3" scope="col">Type</TableHeadCell>
-      <TableHeadCell padding="px-4 py-3" scope="col">Description</TableHeadCell>
-      <TableHeadCell padding="px-4 py-3" scope="col">security</TableHeadCell>
-    </TableHead>
-    <TableBody class="divide-y">
-      {#if searchTerm}
-        {#each filteredItems as item (item.id)}
-          <TableBodyRow on:click={() => goto(`/secrets/${item.id}`)}>
-            <TableBodyCell tdClass="px-4 py-3">{item.name}</TableBodyCell>
-            <TableBodyCell tdClass="px-4 py-3">{item.kind}</TableBodyCell>
-            <TableBodyCell tdClass="px-4 py-3">{item.description}</TableBodyCell
-            >
-            <TableBodyCell tdClass="px-4 py-3">{item.security}</TableBodyCell>
-          </TableBodyRow>
-        {/each}
-      {:else}
-        {#each currentPageItems as item (item.id)}
-          <TableBodyRow on:click={() => goto(`/secrets/${item.id}`)}>
-            <TableBodyCell tdClass="px-4 py-3">{item.name}</TableBodyCell>
-            <TableBodyCell tdClass="px-4 py-3">{item.kind}</TableBodyCell>
-            <TableBodyCell tdClass="px-4 py-3">{item.description}</TableBodyCell
-            >
-            <TableBodyCell tdClass="px-4 py-3">{item.security}</TableBodyCell>
-          </TableBodyRow>
-        {/each}
-      {/if}
-    </TableBody>
-
-    <div
-      slot="footer"
-      class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4"
-      aria-label="Table navigation"
-    >
-      <span class="text-sm font-normal text-gray-500 dark:text-gray-400">
-        Showing
-        <span class="font-semibold text-gray-900 dark:text-white"
-          >{startRange}-{endRange}</span
-        >
-        of
-        <span class="font-semibold text-gray-900 dark:text-white"
-          >{totalItems}</span
-        >
-      </span>
-      <ButtonGroup>
-        <Button on:click={loadPreviousPage} disabled={currentPosition === 0}>
-          <ChevronLeftOutline size="xs" class="m-1.5" />
-        </Button>
-        {#each pagesToShow as pageNumber}
-          <Button on:click={() => goToPage(pageNumber)}>{pageNumber}</Button>
-        {/each}
-        <Button on:click={loadNextPage} disabled={totalPages === endPage}>
-          <ChevronRightOutline size="xs" class="m-1.5" />
-        </Button>
-      </ButtonGroup>
-    </div>
-  </TableSearch>
-</Section>
+      of
+      <span class="font-semibold text-gray-900 dark:text-white"
+        >{totalItems}</span
+      >
+    </span>
+    <ButtonGroup>
+      <Button on:click={loadPreviousPage} disabled={currentPosition === 0}>
+        <ChevronLeftOutline size="xs" class="m-1.5" />
+      </Button>
+      {#each pagesToShow as pageNumber}
+        <Button on:click={() => goToPage(pageNumber)}>{pageNumber}</Button>
+      {/each}
+      <Button on:click={loadNextPage} disabled={totalPages === endPage}>
+        <ChevronRightOutline size="xs" class="m-1.5" />
+      </Button>
+    </ButtonGroup>
+  </div>
+</TableSearch>

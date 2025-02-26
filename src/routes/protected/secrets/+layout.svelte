@@ -3,6 +3,6 @@
 </script>
 
 <div>
-
   {@render children()}
+
 </div>
