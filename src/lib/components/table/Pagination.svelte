@@ -1,7 +1,5 @@
 <script>
-    export let currentPage = 1;
-    export let totalItems = 1000;
-    export let itemsPerPage = 10;
+    let {currentPage, totalItems, itemsPerPage} = $props();
 </script>
 
 <nav class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">

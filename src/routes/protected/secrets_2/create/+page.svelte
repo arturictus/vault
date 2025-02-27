@@ -6,6 +6,7 @@
     let name = $state("");
     let value = $state("");
     let kind = $state("");
+    let error = $state("")
     
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -30,8 +31,12 @@
         { value: "crypto_key", name: "crypto_key" },
     ];
 </script>
-
+{#if error != ""}
+<pre>{JSON.stringify(error)}</pre>
+{/if}
 <Section name="crudcreateform">
+   
+    
     <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
         Create secret
     </h2>
