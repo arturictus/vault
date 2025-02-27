@@ -2,6 +2,7 @@
     import { Section } from "flowbite-svelte-blocks";
     import { Label, Input, Button, Select, Textarea } from "flowbite-svelte";
     import { invoke } from '@tauri-apps/api/core';
+    import { goto } from "$app/navigation";
 
     let name = $state("");
     let value = $state("");
@@ -20,6 +21,7 @@
             const response = await invoke('create_secret', {
                 data: data
             });
+            goto("/protected/secrets_2");
             console.log(response);
         } catch (error) {
             console.error(error);
@@ -68,7 +70,7 @@
                 <Textarea
                     id="value"
                     placeholder="Value here..."
-                    rows="4"
+                    rows={4}
                     name="value"
                     bind:value={value}
                     required
