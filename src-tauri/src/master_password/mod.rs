@@ -1,9 +1,9 @@
 mod error;
-mod password_encryptor;
-use crate::encrypt::Encryptor;
+
+
 use crate::{AppState, FileSystem, State};
 pub use error::{Error, Result};
-use password_encryptor::PasswordEncryptor;
+use crate::encrypt::{Encrypt, AES};
 use std::fs;
 use std::path::Path;
 
@@ -34,8 +34,8 @@ impl MasterPassword {
         let fs = state.file_system();
         let encryptor = Self::store_master_password(fs, password)?;
         let pk = match private_key {
-            Some(pk) => Encryptor::from_string(pk)?,
-            None => Encryptor::new()?,
+            Some(pk) => Encrypt::from_string(pk)?,
+            None => Encrypt::new()?,
         };
         Self::store_pk(fs, pk, encryptor)?;
         state.set_master_password(password.to_string());
@@ -44,8 +44,8 @@ impl MasterPassword {
         Ok("Master password saved".to_string())
     }
 
-    fn store_master_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
-        let encryptor = PasswordEncryptor::new(password);
+    fn store_master_password(fs: &FileSystem, password: &str) -> Result<AES> {
+        let encryptor = AES::new(password);
         let encrypted = encryptor.encrypt(password.as_bytes())?;
         let path = fs.master_password();
         fs::write(path, encrypted)?;
@@ -54,8 +54,8 @@ impl MasterPassword {
 
     fn store_pk(
         fs: &FileSystem,
-        pk: Encryptor,
-        password_encryptor: PasswordEncryptor,
+        pk: Encrypt,
+        password_encryptor: AES,
     ) -> Result<()> {
         let master_pk = fs.master_pk();
         let pk_for_default_path = Path::new(&master_pk);
@@ -83,17 +83,17 @@ impl MasterPassword {
         }
     }
 
-    fn do_verify_password(fs: &FileSystem, password: &str) -> Result<PasswordEncryptor> {
+    fn do_verify_password(fs: &FileSystem, password: &str) -> Result<AES> {
         let path = fs.master_password();
         let encoded = fs::read_to_string(path)?;
     
-        let encryptor = PasswordEncryptor::from_encrypted(password, &encoded)?;
+        let encryptor = AES::from_encrypted(password, &encoded)?;
     
         encryptor.decrypt(&encoded)?;
         Ok(encryptor)
     }
 
-    pub fn get_encryptor(state: &AppState) -> Result<PasswordEncryptor> {
+    pub fn get_encryptor(state: &AppState) -> Result<AES> {
         let fs = state.file_system();
         let password = state.master_password().ok_or(Error::Custom(
             "NoMasterPassword in master_password".to_string(),

@@ -1,6 +1,7 @@
 mod error;
 pub use error::{Result, Error};
-use crate::{AppState, Encryptor, State};
+use crate::encrypt::Encrypt;
+use crate::{AppState, State, master_password::MasterPassword};
 
 use std::fs;
 use uuid::Uuid;
@@ -38,7 +39,7 @@ impl Secret {
     fn save(&self, state: &AppState) -> Result<()> {
         let fs = state.file_system();
         let json = serde_json::to_string(&self)?;
-        let encryptor = Encryptor::from_state(state)?;
+        let encryptor = Encrypt::from_state(state)?;
         let encrypted = encryptor.encrypt_string(&json)?;
         let out_path = fs.secret_path(VAULT, &self.id);
         fs::write(out_path, encrypted)?;
@@ -47,7 +48,7 @@ impl Secret {
     
     fn find(state: &AppState, id: &str) -> Result<Secret> {
         let fs = state.file_system();
-        let encryptor = Encryptor::from_state(state)?;
+        let encryptor = Encrypt::from_state(state)?;
         let secret_path = fs.secret_path(VAULT, id);
         let encrypted = fs::read_to_string(secret_path)?;
         let decrypted =
@@ -58,7 +59,7 @@ impl Secret {
     
     fn all(state: &AppState) -> Result<Vec<Secret>> {
         let fs = state.file_system();
-        let encryptor = Encryptor::from_state(state)?;
+        let encryptor = Encrypt::from_state(state)?;
         let secret_dir = fs.vault_folder(VAULT);
         let mut secrets = vec![];
         for entry in fs::read_dir(secret_dir)? {

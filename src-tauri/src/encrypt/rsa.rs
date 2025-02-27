@@ -11,12 +11,12 @@ use std::path::Path;
 use crate::encrypt::Result;
 
 #[derive(Debug)]
-pub struct Encryptor {
+pub struct RSA {
     pub private_key: RsaPrivateKey,
     pub public_key: RsaPublicKey,
 }
 
-impl Encryptor {
+impl RSA {
     pub fn new() -> Result<Self> {
         let mut rng = OsRng;
         let private_key = RsaPrivateKey::new(&mut rng, 2048)?;
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_encryption_decryption() {
-        let encryptor = Encryptor::new().unwrap();
+        let encryptor = RSA::new().unwrap();
         let original = "test secret";
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = encryptor.decrypt_string(&encrypted).unwrap();
@@ -104,10 +104,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let key_path = dir.path().join("private_key.pem");
 
-        let encryptor = Encryptor::new().unwrap();
+        let encryptor = RSA::new().unwrap();
         encryptor.save_to_file(&key_path).unwrap();
 
-        let loaded_encryptor = Encryptor::from_file(&key_path).unwrap();
+        let loaded_encryptor = RSA::from_file(&key_path).unwrap();
         let original = "test secret";
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = loaded_encryptor.decrypt_string(&encrypted).unwrap();
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_public_key_to_pem() {
-        let encryptor = Encryptor::new().unwrap();
+        let encryptor = RSA::new().unwrap();
         let public_key_pem = encryptor.public_key_pem().unwrap();
         assert!(public_key_pem.starts_with("-----BEGIN PUBLIC KEY-----"));
         assert!(public_key_pem.ends_with("-----END PUBLIC KEY-----\n"));

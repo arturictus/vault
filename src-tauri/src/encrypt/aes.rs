@@ -4,18 +4,18 @@ use aes_gcm::{
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::{rngs::OsRng, RngCore};
-use crate::master_password::{Error, Result};
+use crate::encrypt::{Error, Result};
 use crypto::digest::Digest;
 use crypto::sha3::Sha3;
 use rand::thread_rng;
 
 #[derive(Debug)]
-pub struct PasswordEncryptor {
+pub struct AES {
     key: [u8; 32],
     salt: [u8; 16],
 }
 
-impl PasswordEncryptor {
+impl AES {
     pub fn new(password: &str) -> Self {
         let salt = Self::generate_salt();
         let key = Self::derive_key(password, &salt);
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_encrypt_decrypt_cycle() {
-        let encryptor = PasswordEncryptor::new("test-password");
+        let encryptor = AES::new("test-password");
         let original_data = b"Hello, World!";
 
         let encrypted = encryptor.encrypt(original_data).unwrap();
@@ -139,8 +139,8 @@ mod tests {
 
     #[test]
     fn test_different_passwords_produce_different_results() {
-        let encryptor1 = PasswordEncryptor::new("password1");
-        let encryptor2 = PasswordEncryptor::new("password2");
+        let encryptor1 = AES::new("password1");
+        let encryptor2 = AES::new("password2");
         let data = b"test data";
 
         let encrypted1 = encryptor1.encrypt(data).unwrap();
@@ -151,8 +151,8 @@ mod tests {
 
     #[test]
     fn test_wrong_password_fails_decryption() {
-        let encryptor1 = PasswordEncryptor::new("correct-password");
-        let encryptor2 = PasswordEncryptor::new("wrong-password");
+        let encryptor1 = AES::new("correct-password");
+        let encryptor2 = AES::new("wrong-password");
 
         let data = b"sensitive information";
         let encrypted = encryptor1.encrypt(data).unwrap();
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_corrupted_data() {
-        let encryptor = PasswordEncryptor::new("password");
+        let encryptor = AES::new("password");
         let data = b"test data";
 
         let encrypted = encryptor.encrypt(data).unwrap();
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_invalid_base64() {
-        let encryptor = PasswordEncryptor::new("password");
+        let encryptor = AES::new("password");
         assert!(matches!(
             encryptor.decrypt("not-base64!@#$"),
             Err(Error::Base64(_))
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_same_data_different_encryption() {
-        let encryptor = PasswordEncryptor::new("password");
+        let encryptor = AES::new("password");
         let data = b"test data";
 
         let encrypted1 = encryptor.encrypt(data).unwrap();
@@ -194,8 +194,8 @@ mod tests {
     fn test_verify_password() {
         let good_password = "pasword";
         let wrong_password = "wrong-password";
-        let good_encryptor = PasswordEncryptor::new(good_password);
-        let bad_encryptor = PasswordEncryptor::new(wrong_password);
+        let good_encryptor = AES::new(good_password);
+        let bad_encryptor = AES::new(wrong_password);
         let good_encrypted = good_encryptor.encrypt(b"password").unwrap();
 
         assert!(bad_encryptor.decrypt(&good_encrypted).is_err())
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_good_password_is_successfuly_decrypted() {
         let good_password = "pasword";
-        let good_encryptor = PasswordEncryptor::new(good_password);
+        let good_encryptor = AES::new(good_password);
         let encrypted = good_encryptor.encrypt(good_password.as_bytes()).unwrap();
         let decrypted = good_encryptor.decrypt(&encrypted).unwrap();
         assert_eq!(good_password.as_bytes(), decrypted);
@@ -213,9 +213,9 @@ mod tests {
     #[test]
     fn test_good_password_is_decripted_from_different_decryptor() {
         let good_password = "pasword";
-        let good_encryptor = PasswordEncryptor::new(good_password);
+        let good_encryptor = AES::new(good_password);
         let encrypted = good_encryptor.encrypt(good_password.as_bytes()).unwrap();
-        let good_encryptor2 = PasswordEncryptor::from_encrypted(good_password, &encrypted).unwrap();
+        let good_encryptor2 = AES::from_encrypted(good_password, &encrypted).unwrap();
         let decrypted = good_encryptor2.decrypt(&encrypted).unwrap();
         assert_eq!(good_password.as_bytes(), decrypted);
     }

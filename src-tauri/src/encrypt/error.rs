@@ -12,7 +12,8 @@ pub enum Error {
     StateLock(String),
     Custom(String),
     MasterPassword(master_password::Error),
-
+    EncryptPassword(String),
+    DecryptPassword(String),
 }
 
 // --- Rsa errors
