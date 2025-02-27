@@ -88,6 +88,15 @@ impl AES {
         Ok(BASE64.encode(combined))
     }
 
+    pub fn encrypt_string(&self, data: &str) -> Result<String> {
+        self.encrypt(data.as_bytes())
+    }
+
+    pub fn decrypt_string(&self, encoded: &str) -> Result<String> {
+        let data = self.decrypt(encoded)?;
+        Ok(String::from_utf8(data)?)
+    }
+
     pub fn decrypt(&self, encoded: &str) -> Result<Vec<u8>> {
         let data = BASE64.decode(encoded.as_bytes())?;
         if data.len() < 16 {

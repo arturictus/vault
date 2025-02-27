@@ -6,7 +6,9 @@
     import { onMount } from "svelte";
 
     let { secrets } = $props();
+    console.log("secrets", secrets);
     const paginationData = secrets;
+    console.log(paginationData);
     let searchTerm = $state("");
     let currentPosition = $state(0);
     const itemsPerPage = $state(10);
@@ -16,20 +18,19 @@
     let totalItems = paginationData.length;
     let startPage = $state(null);
     let endPage = $state(null);
-    let filteredData = $state(paginationData);
 
     // Function to update the pagination and filter the data
     const updateDataAndPagination = () => {
-        const currentPageItems = filteredData.slice(
+        const currentPageItems = paginationData.slice(
             currentPosition,
             currentPosition + itemsPerPage,
         );
-        renderPagination(filteredData.length);
+        renderPagination(currentPageItems.length);
     };
 
     // Load next page of data
     const loadNextPage = () => {
-        if (currentPosition + itemsPerPage < filteredData.length) {
+        if (currentPosition + itemsPerPage < paginationData.length) {
             currentPosition += itemsPerPage;
             updateDataAndPagination();
         }
@@ -45,7 +46,7 @@
 
     // Render the pagination based on the current state
     const renderPagination = (totalItems) => {
-        totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        totalPages = Math.ceil(paginationData.length / itemsPerPage);
         const currentPage = Math.ceil((currentPosition + 1) / itemsPerPage);
 
         startPage = currentPage - Math.floor(showPage / 2);
@@ -70,28 +71,42 @@
         Math.min(currentPosition + itemsPerPage, totalItems),
     );
 
-    onMount(() => {
-        renderPagination(paginationData.length);
-    });
+    // $effect(() => {
+    //     renderPagination(paginationData.length);
+    // });
 
     let currentPageItems = $derived(
-        filteredData.slice(currentPosition, currentPosition + itemsPerPage),
+        paginationData.slice(currentPosition, currentPosition + itemsPerPage),
+    );
+    let filteredItems = $derived(
+        paginationData.filter((item) =>
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        ),
     );
 
-    let onSearch = (term) => {
-        searchTerm = term;
-        filteredData = paginationData.filter((item) =>
-            item.name.toLowerCase().includes(term.toLowerCase())
-        );
+    let onSearch = (searchTerm) => {
+        searchTerm = searchTerm;
+        console.log("searchTerm", searchTerm);
         currentPosition = 0;
         updateDataAndPagination();
     };
 
-    let currentPage = $derived(currentPosition + 1);
+    let divClass =
+        "bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden";
+    // let innerDivClass =
+    //     "flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0 md:space-x-4 p-4";
+    // let searchClass = "w-full md:w-1/2 relative";
+    // let svgDivClass =
+    //     "absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none";
+    // let classInput =
+    //     "text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2  pl-10";
+
+    // current classes
+    // let divClass = "mx-auto max-w-screen-xl px-4 lg:px-12"
 </script>
 
 <!-- <section class="bg-gray-50 dark:bg-gray-900 p-3 sm:p-5"> -->
-<div class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden">
+<div class={divClass}>
     <div
         class="bg-white dark:bg-gray-800 relative shadow-md sm:rounded-lg overflow-hidden"
     >
@@ -125,7 +140,7 @@
                 </tbody>
             </table>
         </div>
-        <Pagination {currentPage} {totalItems} {itemsPerPage}/>
+        <Pagination />
     </div>
 </div>
 <!-- </section> -->

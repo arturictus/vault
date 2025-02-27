@@ -6,7 +6,8 @@ pub enum Error {
     Json(String),
     EncryptMod(String),
     Io(String),
-    AppStateLock(String)
+    AppStateLock(String),
+    MasterPassword(String),
 }
 
 impl From<serde_json::Error> for Error {
@@ -24,6 +25,13 @@ impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e.to_string())
     }
+}
+
+impl From<crate::master_password::Error> for Error {
+    fn from(e: crate::master_password::Error) -> Self {
+        Error::MasterPassword(e.to_string())
+    }
+    
 }
 
 impl core::fmt::Display for Error {
