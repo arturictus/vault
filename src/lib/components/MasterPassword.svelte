@@ -67,7 +67,7 @@
         <span>{site.name}</span>
     </a>
     <!-- Card -->
-    <Card class="w-full" size="md" border={false}>
+    <Card class="w-full" size="md">
         <h1 class={cardH1Class}>
             {title}
         </h1>

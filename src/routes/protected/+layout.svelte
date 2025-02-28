@@ -1,4 +1,4 @@
-<script>
+<!-- <script>
     import { goto } from "$app/navigation";
     import AppState from "$lib/AppState.svelte";
     import {
@@ -22,6 +22,21 @@
     });
 </script>
 
-<StickyNavbar >
+<StickyNavbar/>
+{@render children()} -->
+<script>
+    import { goto } from "$app/navigation";
+    import AppState from "$lib/AppState.svelte";
+    let { data, children } = $props();
+
+    import DefaultLayout from "$lib/layouts/DefaultLayout.svelte";
+    $effect(() => {
+        if (!AppState.isAuthenticated()) {
+            goto("/account/log_in");
+        }
+    });
+</script>
+
+<DefaultLayout>
     {@render children()}
-</StickyNavbar>
+</DefaultLayout>

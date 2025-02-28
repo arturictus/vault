@@ -1,6 +1,6 @@
 mod error;
 pub use error::{Result, Error};
-use crate::{AppState, Encryptor, State};
+use crate::{AppState, MasterPassword};
 
 use std::fs;
 use uuid::Uuid;
@@ -35,19 +35,19 @@ impl From<NewSecretForm> for Secret {
 }
 
 impl Secret {
-    fn save(&self, state: &AppState) -> Result<()> {
+    pub fn save(&self, state: &AppState) -> Result<()> {
         let fs = state.file_system();
         let json = serde_json::to_string(&self)?;
-        let encryptor = Encryptor::from_state(state)?;
+        let encryptor = MasterPassword::from_state(state)?;
         let encrypted = encryptor.encrypt_string(&json)?;
         let out_path = fs.secret_path(VAULT, &self.id);
         fs::write(out_path, encrypted)?;
         Ok(())
     }
     
-    fn find(state: &AppState, id: &str) -> Result<Secret> {
+    pub fn find(state: &AppState, id: &str) -> Result<Secret> {
         let fs = state.file_system();
-        let encryptor = Encryptor::from_state(state)?;
+        let encryptor = MasterPassword::from_state(state)?;
         let secret_path = fs.secret_path(VAULT, id);
         let encrypted = fs::read_to_string(secret_path)?;
         let decrypted =
@@ -56,9 +56,9 @@ impl Secret {
         Ok(secret)
     }
     
-    fn all(state: &AppState) -> Result<Vec<Secret>> {
+    pub fn all(state: &AppState) -> Result<Vec<Secret>> {
         let fs = state.file_system();
-        let encryptor = Encryptor::from_state(state)?;
+        let encryptor = MasterPassword::from_state(state)?;
         let secret_dir = fs.vault_folder(VAULT);
         let mut secrets = vec![];
         for entry in fs::read_dir(secret_dir)? {
@@ -81,28 +81,7 @@ impl Secret {
     }
 }
 
-#[tauri::command]
-pub fn create_secret(state: State, data: NewSecretForm) -> Result<String> {
-    println!("Received secret: {:?}", data);
-    let state = state.lock().map_err(|e| Error::AppStateLock(e.to_string()))?;
-    let secret: Secret = data.into();
-    secret.save(&state)?;
-    Ok("Submitted secret".to_string())
-}
 
-#[tauri::command]
-pub fn get_secrets(state: State) -> Result<Vec<Secret>> {
-    let state = state.lock().map_err(|e| Error::AppStateLock(e.to_string()))?;
-    let secrets = Secret::all(&state)?;
-    Ok(secrets)
-}
-
-#[tauri::command]
-pub fn get_secret(state: State, id: &str) -> Result<Secret> {
-    let state = state.lock().map_err(|e| Error::AppStateLock(e.to_string()))?;
-    let secret = Secret::find(&state, id)?;
-    Ok(secret)
-}
 
 #[cfg(test)]
 mod tests {

@@ -2,12 +2,14 @@
     import { Section } from "flowbite-svelte-blocks";
     import { Label, Input, Button, Select, Textarea } from "flowbite-svelte";
     import { invoke } from '@tauri-apps/api/core';
+    import { goto } from "$app/navigation";
 
     let name = $state("");
     let value = $state("");
     let kind = $state("");
+    let error = $state("")
     
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: any) => {
         event.preventDefault();
         const data = {
             name: name,
@@ -19,6 +21,7 @@
             const response = await invoke('create_secret', {
                 data: data
             });
+            goto("/protected/secrets");
             console.log(response);
         } catch (error) {
             console.error(error);
@@ -30,8 +33,12 @@
         { value: "crypto_key", name: "crypto_key" },
     ];
 </script>
-
+{#if error != ""}
+<pre>{JSON.stringify(error)}</pre>
+{/if}
 <Section name="crudcreateform">
+   
+    
     <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
         Create secret
     </h2>
@@ -63,7 +70,7 @@
                 <Textarea
                     id="value"
                     placeholder="Value here..."
-                    rows="4"
+                    rows={4}
                     name="value"
                     bind:value={value}
                     required
