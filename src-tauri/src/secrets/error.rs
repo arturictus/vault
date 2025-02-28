@@ -27,12 +27,6 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<crate::master_password::Error> for Error {
-    fn from(e: crate::master_password::Error) -> Self {
-        Error::MasterPassword(e.to_string())
-    }
-    
-}
 
 impl core::fmt::Display for Error {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {

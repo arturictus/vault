@@ -32,7 +32,7 @@ impl Default for AppState {
 impl AppState {
     #[cfg(test)]
     pub fn new_test(password: &str) -> Self {
-        use crate::master_password::MasterPassword;
+        use crate::encrypt::MasterPassword;
         // Initialize the empty state
         let mut state = Self::new_unauthenticated_test();
         // Save the master password and set authenticated to true
@@ -132,7 +132,7 @@ impl fmt::Debug for AppState {
     }
 }
 
-pub type State<'a> = tauri::State<'a, Mutex<AppState>>;
+pub type TauriState<'a> = tauri::State<'a, Mutex<AppState>>;
 
 #[cfg(test)]
 mod tests {

@@ -7,9 +7,12 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Error, Debug, serde::Serialize)]
 pub enum Error {
   TauriInit(String),
+  Secrets(String),
   Custom(String),
   Encryption(String),
   Io(String),
+  StateLock(String),
+  MasterPassword(String),
 }
 
 impl core::fmt::Display for Error {
@@ -32,6 +35,20 @@ impl From<String> for Error {
     fn from(e: String) -> Self {
         Error::Custom(e)
     }
+}
+
+impl From<crate::encrypt::Error> for Error {
+    fn from(e: crate::encrypt::Error) -> Self {
+        Error::Encryption(e.to_string())
+    }
+    
+}
+
+impl From<crate::secrets::Error> for Error {
+    fn from(e: crate::secrets::Error) -> Self {
+        Error::Custom(e.to_string())
+    }
+    
 }
 
 // // --- RSA errors

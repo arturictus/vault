@@ -1,38 +1,20 @@
 
-use tauri_plugin_fs::FsExt;
 mod encrypt;
 mod file_system;
-mod master_password;
 mod secrets;
 mod error;
 mod app_state;
-pub use file_system::FileSystem;
-pub use error::{Error, Result};
+mod ipc;
+use tauri_plugin_fs::FsExt;
 use tauri::Manager;
-
 use std::sync::Mutex;
 
-pub use app_state::{AppState, State};
+pub use file_system::FileSystem;
+pub use error::{Error, Result};
+pub use app_state::{AppState, TauriState};
+pub use encrypt::MasterPassword;
+use ipc::*;
 
-
-#[tauri::command]
-fn is_authenticated(state: State) -> Result<bool> {
-    println!("Checking if authenticated");
-    let state = state.lock()?;
-    if state.is_authenticated() {
-        println!("====> true");
-        Ok(true)
-    } else {
-        println!("====> false");
-        Ok(false)
-    }
-}
-#[tauri::command]
-fn log_out(state: State) -> Result<()> {
-    let mut state = state.lock()?;
-    state.log_out();
-    Ok(())
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,11 +34,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             is_authenticated,
-            secrets::create_secret,
-            secrets::get_secrets,
-            secrets::get_secret,
-            master_password::save_master_password,
-            master_password::verify_master_password,
+            create_secret,
+            get_secrets,
+            get_secret,
+            save_master_password,
+            verify_master_password,
             log_out
         ])
         .plugin(tauri_plugin_fs::init())

@@ -1,27 +1,8 @@
-mod error;
-
-
-use crate::{AppState, FileSystem, State};
-pub use error::{Error, Result};
-use crate::encrypt::{Encrypt, AES};
+use crate::{AppState, FileSystem};
+use crate::encrypt::error::{Error, Result};
+use crate::encrypt::{AES, RSA};
 use std::fs;
 use std::path::Path;
-
-#[tauri::command]
-pub fn save_master_password(
-    state: State,
-    password: &str,
-    private_key: Option<&str>,
-) -> Result<String> {
-    let mut state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
-    MasterPassword::save(&mut state, password, private_key)
-}
-
-#[tauri::command]
-pub fn verify_master_password(state: State, password: &str) -> Result<String> {
-    let mut state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
-    MasterPassword::verify(&mut state, password)
-}
 
 pub struct MasterPassword;
 
@@ -34,8 +15,8 @@ impl MasterPassword {
         let fs = state.file_system();
         let encryptor = Self::store_master_password(fs, password)?;
         let pk = match private_key {
-            Some(pk) => Encrypt::from_string(pk)?,
-            None => Encrypt::new()?,
+            Some(pk) => RSA::from_string(pk)?,
+            None => RSA::new()?,
         };
         Self::store_pk(fs, pk, encryptor)?;
         state.set_master_password(password.to_string());
@@ -54,7 +35,7 @@ impl MasterPassword {
 
     fn store_pk(
         fs: &FileSystem,
-        pk: Encrypt,
+        pk: RSA,
         password_encryptor: AES,
     ) -> Result<()> {
         let master_pk = fs.master_pk();
