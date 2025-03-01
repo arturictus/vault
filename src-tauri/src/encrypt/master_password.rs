@@ -140,6 +140,17 @@ mod tests {
     }
 
     #[test]
+    fn test_encrypt_long_text() {
+        let password = "secret";
+        let state = AppState::new_test(password);
+        let encryptor = MasterPassword::from_state(&state).unwrap();
+        let encrypted = encryptor.encrypt_string(&long_text()).unwrap();
+        assert_ne!(long_text(), encrypted);
+        let decrypted = encryptor.decrypt_string(&encrypted).unwrap();
+        assert_eq!(long_text(), decrypted);
+    }
+
+    #[test]
     fn test_encrypt_decrypt() {
         let password = "secret";
         let state = AppState::new_test(password);
