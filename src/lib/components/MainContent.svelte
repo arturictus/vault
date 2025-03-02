@@ -1,5 +1,5 @@
 <script>
-    let { data, children } = $props();
+    let { children } = $props();
 </script>
 <main class="md:ml-64 h-auto max-h-full pt-20 min-h-screen">
   <!-- <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
