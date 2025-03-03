@@ -6,6 +6,7 @@
   import SearchBar from "$lib/components/secrets_index/SearchBar.svelte";
   import List from "$lib/components/secrets_index/List.svelte";
   import Detail from "$lib/components/secrets_index/Detail.svelte";
+  import { toaster } from "$lib/stores/toaster.svelte";
 
   const { data } = $props();
   let searchTerm = $state("");
@@ -23,7 +24,6 @@
   };
 
   let onSearch = (term) => {
-    console.log(term);
     searchTerm = term;
     if (term === "") {
       filteredData = data.secrets;
@@ -44,7 +44,7 @@
 {/snippet}
 
 {#snippet leftColumn()}
-  <List secrets={filteredData} onclick={onSelected} {selectedId}/>
+  <List secrets={filteredData} onclick={onSelected} {selectedId} />
 {/snippet}
 
 {#snippet main()}
@@ -56,8 +56,3 @@
 {/snippet}
 
 <MainContent {leftColumn} {main} {header} />
-
-<!-- {#snippet singleBlock()}
-  <TableSearch secrets={data.secrets} />
-{/snippet} -->
-<!-- <MainContent main={singleBlock}/> -->
