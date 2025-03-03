@@ -5,6 +5,8 @@
   import MasterPassword from "$lib/components/MasterPassword.svelte";
   import FirstSetup from "$lib/components/FirstSetup.svelte";
   import { goto } from "$app/navigation";
+  import { page } from '$app/stores';
+  import Toaster from "$lib/components/Toaster.svelte";
 
   // Wait for AppState to initialize
   const ready = initPromise.then(() => true);

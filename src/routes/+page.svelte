@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { Button, P } from "flowbite-svelte";
+  import Toaster  from "$lib/components/Toaster.svelte";
   export let title = "Welcome to Vault";
   export let description =
     'Seems that is your first time here. Please click on the "Setup" button to start.';
@@ -8,9 +9,7 @@
     src: "/svelte.svg",
     alt: "maintenance",
   };
-  export let btnTitle = "Setup";
-  export let btnHref = "/";
-  export let mainClass = "bg-gray-50 dark:bg-gray-900";
+
   export let mainDivClass =
     "flex flex-col justify-center items-center px-6 mx-auto h-screen xl:px-0 dark:bg-gray-900";
   export let h1Class =

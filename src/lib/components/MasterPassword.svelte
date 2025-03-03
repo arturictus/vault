@@ -16,9 +16,8 @@
     } from "flowbite-svelte-icons";
     import { invoke } from "@tauri-apps/api/core";
     import AppState from "$lib/AppState.svelte";
-    // TODO: move to layout
-    import { addToast } from "$lib/stores/toast.svelte";
     import { goto } from "$app/navigation";
+    import { toaster, type ToastOptions } from '$lib/stores/toaster.svelte';
 
     let title = "Access your safe zone";
     let site = {
@@ -39,7 +38,7 @@
         await invoke("verify_master_password", { password: main_password })
             .catch((e) => {
                 main_password = ""
-                addToast("Wrong password");
+                toaster.error("Wrong password");
             })
             .then(async (res) => {
                 main_password = ""
@@ -47,7 +46,7 @@
                     await AppState.refreshAuthState();
                     if (AppState.isAuthenticated()) { goto("/protected/secrets") }
                 } catch (e) {
-                    addToast("Error refreshing auth state");
+                    toaster.error("Error refreshing auth state");
                 }
             });
     };
@@ -59,7 +58,6 @@
     let mainDivClass =
         "flex flex-col items-center justify-center px-6 pt-8 mx-auto md:h-screen pt:mt-0 dark:bg-gray-900";
 </script>
-
 <div class={mainDivClass}>
 
     <a href={site.link} class={siteLinkClass}>
