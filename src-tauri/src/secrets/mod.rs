@@ -79,6 +79,13 @@ impl Secret {
         }
         Ok(secrets)
     }
+
+    pub fn delete(state: &AppState, id: &str) -> Result<()> {
+        let fs = state.file_system();
+        let secret_path = fs.secret_path(VAULT, id);
+        fs::remove_file(secret_path)?;
+        Ok(())
+    }
 }
 
 
@@ -107,5 +114,21 @@ mod tests {
         assert_eq!(secret, read_secret);
         let all = Secret::all(&state).unwrap();
         assert_eq!([secret], all.as_slice());
+    }
+
+    #[test]
+    fn test_delete_secret() {
+        let state = setup();
+        let id = "test-id";
+        let secret = Secret {
+            id: id.to_string(),
+            kind: "test".to_string(),
+            name: "test".to_string(),
+            value: "test".to_string(),
+        };
+        secret.save(&state).unwrap();
+        Secret::delete(&state, id).unwrap();
+        let all = Secret::all(&state).unwrap();
+        assert!(all.is_empty());
     }
 }

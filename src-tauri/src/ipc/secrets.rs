@@ -23,3 +23,10 @@ pub fn get_secret(state: TauriState, id: &str) -> Result<Secret> {
     let secret = Secret::find(&state, id)?;
     Ok(secret)
 }
+
+#[tauri::command]
+pub fn delete_secret(state: TauriState, id: &str) -> Result<()> {
+    let state = state.lock().map_err(|e| Error::StateLock(e.to_string()))?;
+    Secret::delete(&state, id)?;
+    Ok(())
+}

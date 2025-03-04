@@ -1,7 +1,35 @@
-<script>
-    import CopyBlock from "./CopyBlock.svelte";
-  import copyBlock from "./CopyBlock.svelte";
+<script lang="ts">
+  import CopyBlock from "./CopyBlock.svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import { toaster } from "$lib/stores/toaster.svelte";
+  import { triggerRefresh } from "$lib/stores/refresh";
+  // import Modal from "$lib/components/Modal.svelte";
+  // import { Button } from "flowbite-svelte";
+
   let { secret } = $props();
+  
+  // Modal state
+  let deleteModalOpen = $state(false);
+  
+  // Function to open the delete confirmation modal
+  let confirmDelete = () => {
+    deleteModalOpen = true;
+  };
+  
+  // Function to perform the actual deletion
+  let deleteSecret = async () => {
+    try {
+      await invoke("delete_secret", { id: secret.id });
+      toaster.success("Secret deleted successfully");
+      // Trigger a reload before navigation
+      triggerRefresh();
+      // Close the modal
+      deleteModalOpen = false;
+    } catch (e) {
+      console.error(e);
+      toaster.error("Error deleting secret");
+    }
+  };
 </script>
 
 <section class="bg-white dark:bg-gray-900">
@@ -42,6 +70,7 @@
         Edit
       </button>
       <button
+        onclick={deleteSecret}
         type="button"
         class="inline-flex items-center text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900"
       >
@@ -62,3 +91,17 @@
     </div>
   </div>
 </section>
+
+<!-- Delete Confirmation Modal -->
+<!-- <Modal open={deleteModalOpen} size="xs" autoclose>
+  <div class="text-center">
+    <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+    </svg>
+    <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure you want to delete "{secret.name}"?</h3>
+    <div class="flex justify-center gap-4">
+      <Button color="red" on:click={deleteSecret}>Yes, I'm sure</Button>
+      <Button color="alternative" on:click={() => deleteModalOpen = false}>No, cancel</Button>
+    </div>
+  </div>
+</Modal> -->

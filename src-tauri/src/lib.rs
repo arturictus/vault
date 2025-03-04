@@ -39,7 +39,8 @@ pub fn run() {
             get_secret,
             save_master_password,
             verify_master_password,
-            log_out
+            log_out,
+            delete_secret
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
