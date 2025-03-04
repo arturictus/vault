@@ -88,8 +88,8 @@
                 />
             </div>
             
-            <Button type="submit" class="w-32" disabled={submitting}>
-                {#if submitting}
+            <Button type="submit" class="w-32" disabled={$submitting}>
+                {#if $submitting}
                     <span class="inline-block mr-2">Loading...</span>
                 {:else}
                     Let's Go!
