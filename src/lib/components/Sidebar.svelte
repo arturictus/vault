@@ -1,6 +1,7 @@
 <script lang="ts">
   import SidebarNav from './sidebar/SidebarNav.svelte';
   import SidebarFooter from './sidebar/SidebarFooter.svelte';
+  let {mainNavItems, navDropdowns, footerNavItems} = $props();
 </script>
 
 <aside
@@ -9,7 +10,7 @@
   id="drawer-navigation"
 >
   <div class="overflow-y-auto py-5 px-3 h-full bg-white dark:bg-gray-800">
-    <SidebarNav />
+    <SidebarNav {mainNavItems} {navDropdowns} {footerNavItems} />
   </div>
   <SidebarFooter />
 </aside>

@@ -3,9 +3,9 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import MainContent from "$lib/components/MainContent.svelte";
-  import SearchBar from "$lib/components/secrets_index/SearchBar.svelte";
-  import List from "$lib/components/secrets_index/List.svelte";
-  import Detail from "$lib/components/secrets_index/Detail.svelte";
+  import SearchBar from "$lib/components/secrets/index/SearchBar.svelte";
+  import List from "$lib/components/secrets/index/List.svelte";
+  import Detail from "$lib/components/secrets/index/Detail.svelte";
   import { toaster } from "$lib/stores/toaster.svelte";
 
   const { data } = $props();

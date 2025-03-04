@@ -1,13 +1,4 @@
 <script lang="ts">
-    import { Section } from "flowbite-svelte-blocks";
-    import {
-        Label,
-        Input,
-        Button,
-        Select,
-        Textarea,
-        Alert,
-    } from "flowbite-svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { goto } from "$app/navigation";
     import MainContent from "$lib/components/MainContent.svelte";
@@ -15,7 +6,7 @@
     import { z } from "zod";
     import { zod } from "sveltekit-superforms/adapters";
     import { toaster } from "$lib/stores/toaster.svelte";
-    import Form from "$lib/components/secrets_create/Form.svelte";
+    import Form from "$lib/components/secrets/Form.svelte";
     import SuperDebug from "sveltekit-superforms";
 
     // Define the schema for form validation
