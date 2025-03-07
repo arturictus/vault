@@ -4,10 +4,11 @@ use crate::error::{Error, Result};
 use crate::app_state::TauriState;
 use yubikey::{piv, YubiKey};
 // Remove unused import
-use pinentry::PassphraseInput;
 use base64::Engine;
 use rand::RngCore;
-// Import the correct ExposeSecret trait
+// Import the correct traits
+use tauri::Manager;
+use tauri::Runtime;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct YubiKeyInfo {
@@ -47,7 +48,6 @@ impl From<yubikey::Error> for Error {
 }
 
 /// List all connected YubiKeys
-#[command]
 pub fn list_yubikeys() -> Result<Vec<YubiKeyInfo>> {
     let mut keys = Vec::new();
     
@@ -73,26 +73,60 @@ pub fn list_yubikeys() -> Result<Vec<YubiKeyInfo>> {
     }
 }
 
-/// Get PIN from user 
-pub fn get_pin(prompt: &str) -> Result<String> {
-    // Create a password input with the given prompt
-    let mut input = PassphraseInput::with_default_binary()
-        .ok_or_else(|| Error::YubiKeyError("Could not find pinentry program".to_string()))?;
-    input.with_prompt(prompt);
+// /// Get PIN from user 
+// pub fn get_pin(prompt: &str) -> Result<String> {
+//     // Create a password input with the given prompt
+//     let mut input = PassphraseInput::with_default_binary()
+//         .ok_or_else(|| Error::YubiKeyError("Could not find pinentry program".to_string()))?;
+//     input.with_prompt(prompt);
     
-    let secret = input.interact()
-        .map_err(|e| Error::YubiKeyError(format!("PIN entry failed: {}", e)))?;
+//     let secret = input.interact()
+//         .map_err(|e| Error::YubiKeyError(format!("PIN entry failed: {}", e)))?;
     
-    // Simple workaround - use a hardcoded PIN for development purposes only
-    // TODO: In production, implement proper PIN handling with appropriate secrecy handling
-    let pin = "123456".to_string(); // Default PIN for development
-    Ok(pin)
+//     // Simple workaround - use a hardcoded PIN for development purposes only
+//     // TODO: In production, implement proper PIN handling with appropriate secrecy handling
+//     let pin = "123456".to_string(); // Default PIN for development
+//     Ok(pin)
+// }
+use tauri::{AppHandle, Emitter, EventTarget};
+#[command]
+pub fn get_pin_with_dialog<R: Runtime>(app_handle: &tauri::AppHandle<R>, prompt: &str) -> Result<String> {
+    // Create a one-time channel to receive the PIN
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    
+    // Create unique window ID
+    let window_id = format!("pin-entry-{}", rand::random::<u32>());
+    
+    // Build and show the PIN entry window
+    let pin_window = tauri::WindowBuilder::new(
+        app_handle,
+        &window_id,
+        tauri::WindowUrl::App("pin-entry.html".into())
+    )
+    .title(prompt)
+    .inner_size(400.0, 200.0)
+    .center()
+    .focus()
+    .build()
+    .map_err(|e| Error::YubiKeyError(format!("Failed to create PIN entry window: {}", e)))?;
+    
+    // Register a callback for when PIN is submitted
+    let tx_clone = tx.clone();
+    app_handle.listen_global("pin-submitted", move |event| {
+        if let Some(pin) = event.payload().and_then(|p| p.parse::<String>().ok()) {
+            let _ = tx_clone.send(pin);
+        }
+    });
+    
+    // Wait for PIN with timeout
+    match rx.recv_timeout(std::time::Duration::from_secs(60)) {
+        Ok(pin) => Ok(pin),
+        Err(_) => Err(Error::YubiKeyError("PIN entry timed out".to_string()))
+    }
 }
 
 /// Encrypt data using YubiKey
-#[command]
-pub async fn encrypt_with_yubikey(
-    _state: TauriState<'_>,
+pub fn encrypt_with_yubikey(
     yubikey_serial: u32, 
     data: &str
 ) -> Result<String> {
@@ -134,9 +168,7 @@ pub async fn encrypt_with_yubikey(
 }
 
 /// Authenticate with YubiKey
-#[command]
-pub async fn authenticate_with_yubikey(
-    _state: TauriState<'_>,
+pub fn authenticate_with_yubikey(
     yubikey_serial: u32,
     challenge: &str,
 ) -> Result<bool> {
@@ -171,8 +203,7 @@ pub async fn authenticate_with_yubikey(
 }
 
 /// Generate a random challenge for authentication
-#[command]
-pub async fn generate_yubikey_challenge() -> Result<String> {
+pub fn generate_yubikey_challenge() -> Result<String> {
     // Create a 256-bit random challenge
     let mut rng = rand::thread_rng();
     let mut challenge = [0u8; 32]; 

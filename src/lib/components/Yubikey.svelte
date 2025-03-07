@@ -1,16 +1,16 @@
 <!-- YubiKey.svelte - YubiKey management component -->
 <script>
   import { onMount } from 'svelte';
-  import { invoke } from '@tauri-apps/api/tauri';
+  import { invoke } from "@tauri-apps/api/core";
   
-  let yubikeys = [];
-  let selectedYubikey = null;
-  let challenge = '';
-  let message = '';
-  let status = '';
-  let loading = false;
-  let textToEncrypt = '';
-  let encryptedText = '';
+  let yubikeys = $state([]);
+  let selectedYubikey = $state(null);
+  let challenge = $state('');
+  let message = $state('');
+  let status = $state('');
+  let loading = $state(false);
+  let textToEncrypt = $state('');
+  let encryptedText = $state('');
   
   onMount(async () => {
     try {
@@ -92,14 +92,14 @@
     loading = true;
     try {
       encryptedText = await invoke('encrypt_with_yubikey', {
-        yubikey_serial: selectedYubikey.serial,
+        yubikeySerial: selectedYubikey.serial,
         data: textToEncrypt,
       });
       
       message = 'Text encrypted successfully!';
     } catch (error) {
       console.error('Encryption error:', error);
-      message = `Error: ${error}`;
+      message = `Error: ${JSON.stringify(error)}`;
     } finally {
       loading = false;
     }
@@ -112,7 +112,7 @@
   <div class="section">
     <h3>Connected YubiKeys</h3>
     <div class="action-row">
-      <button on:click={listYubikeys} disabled={loading}>
+      <button onclick={listYubikeys} disabled={loading}>
         {loading ? 'Scanning...' : 'Refresh YubiKeys'}
       </button>
       <span class="status">{status}</span>
@@ -141,7 +141,7 @@
   <div class="section">
     <h3>Authentication</h3>
     <div class="action-row">
-      <button on:click={authenticate} disabled={loading || !selectedYubikey}>
+      <button onclick={authenticate} disabled={loading || !selectedYubikey}>
         {loading ? 'Authenticating...' : 'Authenticate with YubiKey'}
       </button>
     </div>
@@ -154,7 +154,7 @@
       <label for="encrypt-input">Text to encrypt:</label>
       <textarea id="encrypt-input" rows="3" bind:value={textToEncrypt} placeholder="Enter text to encrypt"></textarea>
       
-      <button on:click={encryptData} disabled={loading || !selectedYubikey || !textToEncrypt}>
+      <button onclick={encryptData} disabled={loading || !selectedYubikey || !textToEncrypt}>
         {loading ? 'Encrypting...' : 'Encrypt with YubiKey'}
       </button>
       

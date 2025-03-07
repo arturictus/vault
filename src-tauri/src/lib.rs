@@ -41,11 +41,8 @@ pub fn run() {
             save_master_password,
             verify_master_password,
             log_out,
-            // YubiKey commands
-            yubikey::list_yubikeys,
-            yubikey::encrypt_with_yubikey,
-            yubikey::authenticate_with_yubikey,
-            yubikey::generate_yubikey_challenge
+            list_yubikeys,
+            encrypt_with_yubikey
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())

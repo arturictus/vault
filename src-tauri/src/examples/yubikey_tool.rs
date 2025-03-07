@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("Authenticating with YubiKey...");
                         println!("When prompted, enter your PIN");
                         
-                        match authenticate_with_yubikey(std::sync::Mutex::new(()), selected_key.serial.unwrap(), &challenge) {
+                        match authenticate_with_yubikey(selected_key.serial.unwrap(), &challenge) {
                             Ok(result) => {
                                 if result {
                                     println!("Authentication successful! ✅");
@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("Encrypting text with YubiKey...");
                         println!("When prompted, enter your PIN");
                         
-                        match encrypt_with_yubikey(std::sync::Mutex::new(()), selected_key.serial.unwrap(), &text) {
+                        match encrypt_with_yubikey(selected_key.serial.unwrap(), &text) {
                             Ok(encrypted) => {
                                 println!("Encrypted result:");
                                 println!("{}", encrypted);
