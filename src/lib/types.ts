@@ -5,3 +5,7 @@ export interface Secret {
 }
 
 export type Secrets = Secret[];
+
+export interface Dismissable {
+    dismissable?: boolean;
+  }
