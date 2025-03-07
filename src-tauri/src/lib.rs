@@ -5,6 +5,7 @@ mod secrets;
 mod error;
 mod app_state;
 mod ipc;
+pub mod yubikey;
 use tauri_plugin_fs::FsExt;
 use tauri::Manager;
 use std::sync::Mutex;
@@ -39,7 +40,12 @@ pub fn run() {
             get_secret,
             save_master_password,
             verify_master_password,
-            log_out
+            log_out,
+            // YubiKey commands
+            yubikey::list_yubikeys,
+            yubikey::encrypt_with_yubikey,
+            yubikey::authenticate_with_yubikey,
+            yubikey::generate_yubikey_challenge
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())

@@ -13,6 +13,7 @@ pub enum Error {
   Io(String),
   StateLock(String),
   MasterPassword(String),
+  YubiKeyError(String),
 }
 
 impl core::fmt::Display for Error {
