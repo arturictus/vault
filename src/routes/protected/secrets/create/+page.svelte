@@ -1,86 +1,85 @@
 <script lang="ts">
     import { Section } from "flowbite-svelte-blocks";
-    import { Label, Input, Button, Select, Textarea } from "flowbite-svelte";
+    import {
+        Label,
+        Input,
+        Button,
+        Select,
+        Textarea,
+        Alert,
+    } from "flowbite-svelte";
     import { invoke } from "@tauri-apps/api/core";
     import { goto } from "$app/navigation";
     import MainContent from "$lib/components/MainContent.svelte";
+    import { superForm } from "sveltekit-superforms";
+    import { z } from "zod";
+    import { zod } from "sveltekit-superforms/adapters";
+    import { toaster } from "$lib/stores/toaster.svelte";
+    import Form from "$lib/components/secrets_create/Form.svelte";
+    import SuperDebug from "sveltekit-superforms";
 
-    let name = $state("");
-    let value = $state("");
-    let kind = $state("");
-    let error = $state("");
+    // Define the schema for form validation
+    const schema = z.object({
+        name: z.string().min(5, { message: "Name is required" }),
+        value: z.string().min(10000, { message: "Value is required" }),
+        kind: z.enum(["login", "note", "crypto_key"], {
+            required_error: "Please select a type",
+        }),
+    });
 
-    const handleSubmit = async (event: any) => {
-        event.preventDefault();
-        const data = {
-            name: name,
-            value: value,
-            kind: kind,
-        };
-        console.log(data);
-        try {
-            const response = await invoke("create_secret", {
-                data: data,
-            });
-            goto("/protected/secrets");
-            console.log(response);
-        } catch (error) {
-            console.error(error);
-        }
-    };
+    // Define a type based on the schema
+    type FormData = z.infer<typeof schema>;
+
+    // Initialize the form with superValidateSync for client-side validation
+    const { form, errors, enhance, submitting, constraints, validateForm } =
+        superForm(
+            {
+                name: "",
+                value: "",
+                kind: "",
+            },
+            {
+                SPA: true,
+                dataType: "json",
+                validators: zod(schema),
+                onSubmit: async ({ formData, cancel }) => {
+                    // Run explicit validation before proceeding
+                    const result = await validateForm({ update: true });
+                    if (result.valid) {
+                        try {
+                            toaster.info("Creating secret...");
+                            // At this point validation has already passed
+                            const data = {
+                                name: $form.name,
+                                value: $form.value,
+                                kind: $form.kind,
+                            };
+                            const response = await invoke("create_secret", {
+                                data: data,
+                            });
+                            goto("/protected/secrets");
+                            toaster.success("Secret created successfully!");
+                        } catch (err) {
+                            toaster.error("Error creating secret");
+                            cancel();
+                        }
+                    }
+                    // If validation fails, prevent submission and return
+                    toaster.error("Please fix the form errors");
+                    cancel();
+                    return;
+                },
+            },
+        );
+
     let types = [
         { value: "login", name: "Login" },
         { value: "note", name: "Note" },
         { value: "crypto_key", name: "crypto_key" },
     ];
-    let { children } = $props();
 </script>
 
-{#if error != ""}
-    <pre>{JSON.stringify(error)}</pre>
-{/if}
 {#snippet singleBlock()}
-    <Section name="crudcreateform">
-        <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
-            Create secret
-        </h2>
-        <form onsubmit={handleSubmit}>
-            <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
-                <div class="w-full">
-                    <Label
-                        >Type
-                        <Select
-                            class="mt-2"
-                            items={types}
-                            bind:value={kind}
-                            required
-                        />
-                    </Label>
-                </div>
-                <div class="sm:col-span-2">
-                    <Label for="name" class="mb-2">Name</Label>
-                    <Input
-                        type="text"
-                        id="name"
-                        bind:value={name}
-                        placeholder="Type product name"
-                        required
-                    />
-                </div>
-                <div class="sm:col-span-2">
-                    <Label for="description" class="mb-2">Value</Label>
-                    <Textarea
-                        id="value"
-                        placeholder="Value here..."
-                        rows={4}
-                        name="value"
-                        bind:value
-                        required
-                    />
-                </div>
-                <Button type="submit" class="w-32">Add product</Button>
-            </div>
-        </form>
-    </Section>
+    <Form {form} {errors} {enhance} {constraints} {submitting}/>
 {/snippet}
 <MainContent main={singleBlock} />
