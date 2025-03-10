@@ -1,7 +1,9 @@
 mod encrypt;
 mod secrets;
+mod yubikey;
 pub use encrypt::*;
 pub use secrets::*;
+pub use yubikey::*;
 
 use crate::{TauriState, Result};
 
