@@ -36,7 +36,7 @@ ring = "0.16"
 aes-gcm = "0.10"
 rust-crypto = "0.2.36"
 # YubiKey dependencies with macOS compatibility settings
-yubikey = { version = "0.8.0" }
+yubikey = { version = "0.8.0", features= ["untested"] }
 pinentry = "0.5.0"
 secrecy = "0.10.3"
 
