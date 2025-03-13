@@ -1,21 +1,41 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::rngs::OsRng;
 use rsa::{
-    pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding},
+    pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey, LineEnding},
     Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
 };
 
 use crate::encrypt::{Error, Result};
-use crate::{AppState, MasterPassword};
+use crate::{AppState, MasterPassword, W};
 use std::fs;
 #[cfg(test)]
 use std::path::Path;
+
+pub type PublicKey = W<RsaPublicKey>;
 
 #[derive(Debug)]
 pub struct RSA {
     pub private_key: RsaPrivateKey,
     pub public_key: RsaPublicKey,
 }
+
+impl PublicKey {
+    pub fn encrypt(&self, data: &[u8]) -> Result<String> {
+        let mut rng = OsRng;
+        let encrypted = self.0.encrypt(&mut rng, Pkcs1v15Encrypt, data)?;
+        Ok(BASE64.encode(encrypted))
+    }
+    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+        let pem = fs::read_to_string(path)?;
+        Self::from_pem(&pem)
+    }
+
+    pub fn from_pem(pem: &str) -> Result<Self> {
+        let public_key = RsaPublicKey::from_public_key_pem(pem)?;
+        Ok(W(public_key))
+    }
+}
+
 
 impl RSA {
     pub fn new() -> Result<Self> {
@@ -154,5 +174,13 @@ mod tests {
         let public_key_pem = encryptor.public_key_pem().unwrap();
         assert!(public_key_pem.starts_with("-----BEGIN PUBLIC KEY-----"));
         assert!(public_key_pem.ends_with("-----END PUBLIC KEY-----\n"));
+    }
+
+    #[test]
+    fn test_public_key_from_pem() {
+        let msg = "hello";
+        let public_key = W::<RsaPublicKey>::from_file("tests/fixtures/pubkey.pem").unwrap();
+        let encrypted = public_key.encrypt(msg.as_bytes()).unwrap();
+        assert_ne!(msg, encrypted);
     }
 }

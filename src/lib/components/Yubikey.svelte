@@ -11,6 +11,7 @@
   let loading = $state(false);
   let textToEncrypt = $state('');
   let encryptedText = $state('');
+  let public_key = $state('');
   
   onMount(async () => {
     try {
@@ -33,6 +34,33 @@
     } catch (error) {
       console.error('Error listing YubiKeys:', error);
       status = `Error: ${error}`;
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function save_yubikey(e) {
+    e.preventDefault();
+    if (!selectedYubikey?.serial) {
+      message = 'Please select a YubiKey first';
+      return;
+    }
+    
+    loading = true;
+    try {
+      const result = await invoke('save_yubikey_settings', {
+        serial: selectedYubikey.serial,
+        publicKey: public_key
+      });
+      
+      if (result) {
+        message = 'YubiKey saved successfully! ✅';
+      } else {
+        message = 'Error saving YubiKey! ❌';
+      }
+    } catch (error) {
+      console.error('Error saving YubiKey:', error);
+      message = `Error: ${error}`;
     } finally {
       loading = false;
     }
@@ -136,6 +164,21 @@
         {/if}
       </div>
     {/if}
+  </div>
+
+  <div class="section">
+    <h3>Save YubiKey</h3>
+    <div class="action-row">
+      <form onsubmit={save_yubikey}>
+        <label for="public-key">Public Key:</label>
+        <textarea id="public-key" rows="6" bind:value={public_key} placeholder="Enter public key"></textarea>
+        
+        <button type="submit" disabled={loading || !selectedYubikey || !public_key}>
+          {loading ? 'Saving...' : 'Save YubiKey'}
+        </button>
+      </form>
+    </div>
+    <p class="message">{message}</p>
   </div>
   
   <div class="section">

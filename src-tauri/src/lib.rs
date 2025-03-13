@@ -16,6 +16,8 @@ pub use app_state::{AppState, TauriState};
 pub use encrypt::MasterPassword;
 use ipc::*;
 
+pub struct W<T>(pub T);
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -42,7 +44,8 @@ pub fn run() {
             verify_master_password,
             log_out,
             list_yubikeys,
-            encrypt_with_yubikey
+            encrypt_with_yubikey,
+            save_yubikey_settings,
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
