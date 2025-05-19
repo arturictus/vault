@@ -10,9 +10,16 @@ static VAULT: &str = "default";
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct NewSecretForm {
+    encryption: Encryption,
     kind: String,
     name: String,
     value: String,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
+pub enum Encryption {
+    AES,
+    Yubikey,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
@@ -20,6 +27,7 @@ pub struct Secret {
     id: String,
     kind: String,
     name: String,
+    encryption: Encryption,
     value: String,
 }
 
@@ -30,6 +38,7 @@ impl From<NewSecretForm> for Secret {
             kind: data.kind,
             name: data.name,
             value: data.value,
+            encryption: data.encryption,
         }
     }
 }
@@ -97,6 +106,7 @@ mod tests {
         let state = setup();
         let id = "test-id";
         let secret = Secret {
+            encryption: Encryption::AES,
             id: id.to_string(),
             kind: "test".to_string(),
             name: "test".to_string(),
