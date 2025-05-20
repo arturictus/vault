@@ -41,11 +41,11 @@ pinentry = "0.5.0"
 secrecy = "0.10.3"
 
 # Exclude problematic Linux-specific crates on macOS
-[target.'cfg(not(target_os = "macos"))'.dependencies]
+# [target.'cfg(not(target_os = "macos"))'.dependencies]
 pkcs11 = "0.5.0"
 
 # Required for YubiKey crypto operations
-ring = "0.16.20"
+# ring = "0.16.20"
 pem = "3.0"
 
 [dev-dependencies]

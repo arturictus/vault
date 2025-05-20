@@ -1,11 +1,12 @@
 mod experimental_setup;
-
+mod standalone;
 use crate::error::{Error, Result};
 use crate::{encrypt, AppState};
 use base64::Engine;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use yubikey::{YubiKey, piv};
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct YubiKeyInfo {
@@ -155,15 +156,43 @@ pub fn get_public_key_from_yubikey(yubikey: &YubiKey) -> Result<String> {
     let cert = yubikey::certificate::Certificate::read(&mut yubikey_mut, slot)
         .map_err(|e| Error::YubiKeyError(format!("Failed to get certificate: {}", e)))?;
     
-    println!("{:?}", cert);
-    // Get the complete DER-encoded SubjectPublicKeyInfo structure
+    // Get the PEM from the certificate
     let pem = cert.subject_pki().to_pem(rsa::pkcs1::der::pem::LineEnding::LF)
             .map_err(|e| Error::YubiKeyError(format!("Failed to get publick key pem: {}", e)))?;
     
-    // Ok(pem)
-    println!("{:?}", pem);
     Ok(pem)
 }
+
+// TODO: use this https://github.com/iqlusioninc/yubikey.rs/blob/main/tests/integration.rs#L332
+// pub fn get_algorithm_from_yubikey(yubikey: &YubiKey) -> Result<piv::AlgorithmId> {
+//     // Create a new instance of YubiKey since we need a mutable reference
+//     let mut yubikey_mut = YubiKey::open_by_serial(yubikey.serial())
+//         .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey: {}", e)))?;
+    
+//     // Use the Key Management slot for public key
+//     let slot = piv::SlotId::KeyManagement;
+    
+//     // Get the certificate from the slot
+//     let cert = yubikey::certificate::Certificate::read(&mut yubikey_mut, slot)
+//         .map_err(|e| Error::YubiKeyError(format!("Failed to get certificate: {}", e)))?;
+    
+//     // Get the algorithm from the certificate's public key
+//     let algorithm = match cert.subject_pki() {
+//         yubikey::piv::key::PublicKey::Rsa(rsa) => {
+//             let key_size = rsa.bits() as usize;
+//             match key_size {
+//                 1024 => piv::AlgorithmId::Rsa1024,
+//                 2048 => piv::AlgorithmId::Rsa2048,
+//                 _ => return Err(Error::YubiKeyError(format!("Unsupported RSA key size: {}", key_size)))
+//             }
+//         },
+//         yubikey::piv::key::PublicKey::EccP256(_) => piv::AlgorithmId::EccP256,
+//         yubikey::piv::key::PublicKey::EccP384(_) => piv::AlgorithmId::EccP384,
+//         _ => return Err(Error::YubiKeyError("Unsupported key type".to_string())),
+//     };
+    
+//     Ok(algorithm)
+// }
 
 /// Get the public key from a YubiKey by serial number
 pub fn get_public_key(yubikey_serial: u32) -> Result<String> {
@@ -179,10 +208,7 @@ pub fn do_encrypt(yubikey_serial: u32,
     let serial = yubikey::Serial::from(yubikey_serial);
     let yubikey = YubiKey::open_by_serial(serial)
         .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey: {}", e)))?;
-    
-    // Verify PIN
-    // yubikey.verify_pin(pin.as_bytes())?;
-    
+        
     // Get the public key and use it for encryption
     let pub_key = get_public_key_from_yubikey(&yubikey)?;
     let encryptor = encrypt::PublicKey::from_pem(&pub_key)?;
@@ -266,11 +292,15 @@ mod test {
     #[test]
     fn test_encrypt_with_yubikey() {
         let yubikey_serial = 32233649;
-        // let pin = "123456";
         let result = do_encrypt(yubikey_serial, "data".as_bytes().to_vec());
-        result.unwrap();
-        // assert!(result.is_ok())
+        assert!(result.is_ok())
     }
+    // #[test]
+    // fn test_get_algorithm_from_yubikey() {
+    //     let yubikey_serial = 32233649;
+    //     let result = get_algorithm_from_yubikey(yubikey_serial);
+    //     assert!(result.is_ok())
+    // }
 
     #[test]
     fn test_authenticate_with_yubikey() {
