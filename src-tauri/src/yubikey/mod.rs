@@ -143,6 +143,7 @@ pub fn decrypt_with_yubikey(
 }
 
 pub fn get_public_key_from_yubikey(yubikey: &YubiKey) -> Result<String> {
+    use rsa::pkcs1::der::EncodePem;
     // Create a new instance of YubiKey since we need a mutable reference
     let mut yubikey_mut = YubiKey::open_by_serial(yubikey.serial())
         .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey: {}", e)))?;
@@ -154,30 +155,13 @@ pub fn get_public_key_from_yubikey(yubikey: &YubiKey) -> Result<String> {
     let cert = yubikey::certificate::Certificate::read(&mut yubikey_mut, slot)
         .map_err(|e| Error::YubiKeyError(format!("Failed to get certificate: {}", e)))?;
     
-    // Extract the public key from the certificate
-    let subject_public_key_info = cert.subject_pki();
+    println!("{:?}", cert);
+    // Get the complete DER-encoded SubjectPublicKeyInfo structure
+    let pem = cert.subject_pki().to_pem(rsa::pkcs1::der::pem::LineEnding::LF)
+            .map_err(|e| Error::YubiKeyError(format!("Failed to get publick key pem: {}", e)))?;
     
-    // Get the raw bytes
-    let raw_bytes = subject_public_key_info.subject_public_key.raw_bytes();
-    
-    // Base64 encode the raw bytes
-    let pub_key_base64 = base64::engine::general_purpose::STANDARD.encode(raw_bytes);
-    
-    // Wrap the Base64 string at 64 characters per line as required by PEM format
-    let wrapped_base64 = pub_key_base64
-        .chars()
-        .collect::<Vec<char>>()
-        .chunks(64)
-        .map(|chunk| chunk.iter().collect::<String>())
-        .collect::<Vec<String>>()
-        .join("\n");
-    
-    // Format as PEM
-    let pem = format!(
-        "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----",
-        wrapped_base64
-    );
-    
+    // Ok(pem)
+    println!("{:?}", pem);
     Ok(pem)
 }
 
