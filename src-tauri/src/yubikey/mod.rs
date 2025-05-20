@@ -1,7 +1,7 @@
 mod experimental_setup;
 
 use crate::error::{Error, Result};
-use crate::AppState;
+use crate::{encrypt, AppState};
 use base64::Engine;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -42,13 +42,16 @@ impl YubiKeyInfo {
         // YubiKey 0.8.0 doesn't expose form_factor directly
         let form_factor = "YubiKey".to_string();
 
+        // Try to get the public key
+        let pub_key = get_public_key_from_yubikey(key).ok();
+
         Self {
             serial: Some(serial_u32),
             name: format!("YubiKey {}", serial_u32),
             version,
             is_fips: false, // Not directly accessible in 0.8.0
             form_factor,
-            pub_key: None
+            pub_key
         }
     }
 
@@ -134,8 +137,77 @@ pub fn decrypt_with_yubikey(
     let encrypted_data = base64::engine::general_purpose::STANDARD.decode(&encrypted_data).map_err(|e| Error::YubiKeyError(e.to_string()))?;
 
     let decrypted = piv::decrypt_data(&mut yubikey, &encrypted_data, algorithm, slot)?;
-    // TODO: use markers to extract the data
-    Ok(String::from_utf8_lossy(decrypted.as_ref()).to_string())
+    // Convert the decrypted data to a string
+    String::from_utf8(decrypted.to_vec())
+        .map_err(|e| Error::YubiKeyError(format!("Invalid UTF-8 in decrypted data: {}", e)))
+}
+
+pub fn get_public_key_from_yubikey(yubikey: &YubiKey) -> Result<String> {
+    // Create a new instance of YubiKey since we need a mutable reference
+    let mut yubikey_mut = YubiKey::open_by_serial(yubikey.serial())
+        .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey: {}", e)))?;
+    
+    // Use the Key Management slot for public key
+    let slot = piv::SlotId::KeyManagement;
+    
+    // Get the certificate from the slot
+    let cert = yubikey::certificate::Certificate::read(&mut yubikey_mut, slot)
+        .map_err(|e| Error::YubiKeyError(format!("Failed to get certificate: {}", e)))?;
+    
+    // Extract the public key from the certificate
+    let subject_public_key_info = cert.subject_pki();
+    
+    // Get the raw bytes
+    let raw_bytes = subject_public_key_info.subject_public_key.raw_bytes();
+    
+    // Base64 encode the raw bytes
+    let pub_key_base64 = base64::engine::general_purpose::STANDARD.encode(raw_bytes);
+    
+    // Wrap the Base64 string at 64 characters per line as required by PEM format
+    let wrapped_base64 = pub_key_base64
+        .chars()
+        .collect::<Vec<char>>()
+        .chunks(64)
+        .map(|chunk| chunk.iter().collect::<String>())
+        .collect::<Vec<String>>()
+        .join("\n");
+    
+    // Format as PEM
+    let pem = format!(
+        "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----",
+        wrapped_base64
+    );
+    
+    Ok(pem)
+}
+
+/// Get the public key from a YubiKey by serial number
+pub fn get_public_key(yubikey_serial: u32) -> Result<String> {
+    let serial = yubikey::Serial::from(yubikey_serial);
+    let yubikey = YubiKey::open_by_serial(serial)
+        .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey: {}", e)))?;
+    
+    get_public_key_from_yubikey(&yubikey)
+}
+
+pub fn do_encrypt(yubikey_serial: u32,
+    data: Vec<u8>) -> Result<String> {
+    let serial = yubikey::Serial::from(yubikey_serial);
+    let yubikey = YubiKey::open_by_serial(serial)
+        .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey: {}", e)))?;
+    
+    // Verify PIN
+    // yubikey.verify_pin(pin.as_bytes())?;
+    
+    // Get the public key and use it for encryption
+    let pub_key = get_public_key_from_yubikey(&yubikey)?;
+    let encryptor = encrypt::PublicKey::from_pem(&pub_key)?;
+    
+    // Encrypt the data
+    let encrypted = encryptor.encrypt(&data)?;
+    
+    // Encode as base64 for transport
+    Ok(base64::engine::general_purpose::STANDARD.encode(&encrypted))
 }
 
 /// Authenticate with YubiKey
@@ -208,8 +280,17 @@ mod test {
     };
 
     #[test]
+    fn test_encrypt_with_yubikey() {
+        let yubikey_serial = 32233649;
+        // let pin = "123456";
+        let result = do_encrypt(yubikey_serial, "data".as_bytes().to_vec());
+        result.unwrap();
+        // assert!(result.is_ok())
+    }
+
+    #[test]
     fn test_authenticate_with_yubikey() {
-        let yubikey_serial = 13062801;
+        let yubikey_serial = 32233649;
         let pin = "123456";
         let challenge = "SGVsbG8sIFl1YmlLZXkh";
         authenticate_with_yubikey(yubikey_serial, pin.to_string(), challenge).unwrap();
