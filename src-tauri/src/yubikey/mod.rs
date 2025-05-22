@@ -278,6 +278,7 @@ pub fn generate_yubikey_challenge() -> Result<String> {
 mod test {
 
     use super::*;
+    use std::fs;
     #[test]
     fn test_yubikey_challenge() {
         let challenge = super::generate_yubikey_challenge().unwrap();
@@ -293,7 +294,8 @@ mod test {
     fn test_encrypt_with_yubikey() {
         let yubikey_serial = 32233649;
         let result = do_encrypt(yubikey_serial, "data".as_bytes().to_vec());
-        assert!(result.is_ok())
+        assert!(result.is_ok());
+        fs::write("tests/fixtures/encrypted.bin", result.unwrap()).unwrap();
     }
     // #[test]
     // fn test_get_algorithm_from_yubikey() {
