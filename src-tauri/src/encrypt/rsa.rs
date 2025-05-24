@@ -1,43 +1,59 @@
+use rsa::{
+    pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding, DecodePublicKey},
+    Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
+    signature::Verifier as RsaVerifier, // Keep this for verify method
+    signature::Signer, // Added Signer trait
+    signature::SignatureEncoding, // Added SignatureEncoding trait
+    sha2::Sha256,
+    // Removed Keypair, pkcs1v15::SigningKey as they are unused or replaced
+    pkcs1v15::Signature as RsaSignature, 
+};
+use crate::encrypt::{Error, Result}; 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::rngs::OsRng;
-use rsa::{
-    pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey, LineEnding},
-    Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
-};
-
-use crate::encrypt::{Error, Result};
-use crate::{AppState, MasterPassword, W};
+use crate::{AppState, MasterPassword, FileSystem};
 use std::fs;
 #[cfg(test)]
 use std::path::Path;
 
-pub type PublicKey = W<RsaPublicKey>;
-
-#[derive(Debug)]
-pub struct RSA {
-    pub private_key: RsaPrivateKey,
-    pub public_key: RsaPublicKey,
+// This struct is for operations involving only the public key.
+pub struct PublicKey {
+    key: RsaPublicKey,
 }
 
 impl PublicKey {
-    pub fn encrypt(&self, data: &[u8]) -> Result<String> {
-        let mut rng = OsRng;
-        let encrypted = self.0.encrypt(&mut rng, Pkcs1v15Encrypt, data)?;
-        Ok(BASE64.encode(encrypted))
-    }
-    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
-        let pem = fs::read_to_string(path)?;
-        Self::from_pem(&pem)
+    pub fn from_pem(pem: &str) -> Result<Self> {
+        let rsa_public_key = RsaPublicKey::from_public_key_pem(pem)
+            .map_err(|e| Error::Rsa(format!("Failed to parse public key from PEM: {}", e)))?;
+        Ok(Self { key: rsa_public_key })
     }
 
-    pub fn from_pem(pem: &str) -> Result<Self> {
-        let public_key = RsaPublicKey::from_public_key_pem(pem)?;
-        Ok(W(public_key))
+    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> { // Changed return type to Result<Vec<u8>>
+        let mut rng = OsRng;
+        let encrypted_data = self.key.encrypt(&mut rng, Pkcs1v15Encrypt, data)
+            .map_err(|e| Error::Rsa(format!("RSA encryption failed: {}", e)))?;
+        Ok(encrypted_data) // Return raw encrypted bytes
+    }
+
+    pub fn verify(&self, data: &[u8], signature_bytes: &[u8]) -> Result<()> { 
+        let signature = RsaSignature::try_from(signature_bytes)
+            .map_err(|e| Error::Rsa(format!("Failed to create signature from bytes: {}", e)))?;
+        
+        let verifying_key = rsa::pkcs1v15::VerifyingKey::<Sha256>::new(self.key.clone());
+
+        verifying_key.verify(data, &signature)
+            .map_err(|e| Error::Rsa(format!("Signature verification failed: {}", e)))
     }
 }
 
+// Renamed RSA to RsaKeyPair to better reflect its purpose (holding a key pair)
+#[derive(Debug)]
+pub struct RsaKeyPair {
+    pub private_key: RsaPrivateKey,
+    pub public_key: RsaPublicKey, 
+}
 
-impl RSA {
+impl RsaKeyPair {
     pub fn new() -> Result<Self> {
         let mut rng = OsRng;
         let private_key = RsaPrivateKey::new(&mut rng, 2048)?;
@@ -78,13 +94,16 @@ impl RSA {
     }
 
     pub fn public_key_pem(&self) -> Result<String> {
-        let pem = self.public_key.to_public_key_pem(LineEnding::LF)?;
+        // Use the public_key field of RsaKeyPair
+        let pem = self.public_key.to_public_key_pem(LineEnding::LF)
+            .map_err(|e| Error::Rsa(format!("Failed to encode public key to PEM: {}", e)))?;
         Ok(pem)
     }
 
     #[allow(dead_code)]
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         let mut rng = OsRng;
+        // Use the public_key field of RsaKeyPair
         let encrypted = self.public_key.encrypt(&mut rng, Pkcs1v15Encrypt, data)?;
         Ok(encrypted)
     }
@@ -110,7 +129,7 @@ impl RSA {
     }
 }
 
-impl TryFrom<&AppState> for RSA {
+impl TryFrom<&AppState> for RsaKeyPair { // Changed RSA to RsaKeyPair
     type Error = crate::encrypt::Error;
 
     fn try_from(state: &AppState) -> Result<Self> {
@@ -121,7 +140,7 @@ impl TryFrom<&AppState> for RSA {
         let encrypted_str = String::from_utf8_lossy(&encrypted_pk);
         let raw_pk = password_encryptor.decrypt(&encrypted_str)?;
         let pk = String::from_utf8_lossy(&raw_pk);
-        RSA::from_string(&pk)
+        RsaKeyPair::from_string(&pk) // Changed RSA to RsaKeyPair
     }
 }
 
@@ -141,12 +160,12 @@ mod tests {
     #[test]
     fn test_try_from_trait() {
         let state = state();
-        assert!((RSA::try_from(&state).is_ok()));
+        assert!((RsaKeyPair::try_from(&state).is_ok())); // Changed RSA to RsaKeyPair
     }
 
     #[test]
     fn test_encryption_decryption() {
-        let encryptor = RSA::new().unwrap();
+        let encryptor = RsaKeyPair::new().unwrap(); // Changed RSA to RsaKeyPair
         let original = "test secret";
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = encryptor.decrypt_string(&encrypted).unwrap();
@@ -158,10 +177,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let key_path = dir.path().join("private_key.pem");
 
-        let encryptor = RSA::new().unwrap();
+        let encryptor = RsaKeyPair::new().unwrap(); // Changed RSA to RsaKeyPair
         encryptor.save_to_file(&key_path).unwrap();
 
-        let loaded_encryptor = RSA::from_file(&key_path).unwrap();
+        let loaded_encryptor = RsaKeyPair::from_file(&key_path).unwrap(); // Changed RSA to RsaKeyPair
         let original = "test secret";
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = loaded_encryptor.decrypt_string(&encrypted).unwrap();
@@ -170,17 +189,35 @@ mod tests {
 
     #[test]
     fn test_public_key_to_pem() {
-        let encryptor = RSA::new().unwrap();
+        let encryptor = RsaKeyPair::new().unwrap(); // Changed RSA to RsaKeyPair
         let public_key_pem = encryptor.public_key_pem().unwrap();
         assert!(public_key_pem.starts_with("-----BEGIN PUBLIC KEY-----"));
         assert!(public_key_pem.ends_with("-----END PUBLIC KEY-----\n"));
     }
 
     #[test]
-    fn test_public_key_from_pem() {
-        let msg = "hello";
-        let public_key = W::<RsaPublicKey>::from_file("tests/fixtures/pubkey.pem").unwrap();
-        let encrypted = public_key.encrypt(msg.as_bytes()).unwrap();
-        assert_ne!(msg, encrypted);
+    fn test_public_key_verify() {
+        // 1. Generate a key pair
+        let key_pair = RsaKeyPair::new().unwrap();
+        let public_key_pem = key_pair.public_key_pem().unwrap();
+        let private_key_pem = key_pair.private_key_pem().unwrap();
+
+        // 2. Create PublicKey instance for verification
+        let verifier_pk = PublicKey::from_pem(&public_key_pem).unwrap();
+
+        // 3. Sign data using the private key (simulating YubiKey signing for test purposes)
+        let data_to_sign = b"hello world";
+        let private_key_for_signing = RsaPrivateKey::from_pkcs8_pem(&private_key_pem).unwrap();
+        let signing_key = rsa::pkcs1v15::SigningKey::<Sha256>::new_with_prefix(private_key_for_signing);
+        let signature: RsaSignature = signing_key.sign(data_to_sign);
+        
+        // 4. Verify with PublicKey
+        let verification_result = verifier_pk.verify(data_to_sign, signature.to_bytes().as_ref());
+        assert!(verification_result.is_ok(), "Verification failed: {:?}", verification_result.err());
+
+        // 5. Test with wrong data (should fail)
+        let wrong_data = b"hello mars";
+        let verification_should_fail = verifier_pk.verify(wrong_data, signature.to_bytes().as_ref());
+        assert!(verification_should_fail.is_err(), "Verification should have failed for wrong data");
     }
 }

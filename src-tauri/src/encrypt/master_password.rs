@@ -1,6 +1,6 @@
 use crate::{AppState, FileSystem};
 use crate::encrypt::error::{Error, Result};
-use crate::encrypt::{AES, RSA};
+use crate::encrypt::{AES, RsaKeyPair};
 use std::fs;
 use std::path::Path;
 
@@ -15,8 +15,8 @@ impl MasterPassword {
         let fs = state.file_system();
         let encryptor = Self::store_master_password(fs, password)?;
         let pk = match private_key {
-            Some(pk) => RSA::from_string(pk)?,
-            None => RSA::new()?,
+            Some(pk) => RsaKeyPair::from_string(pk)?,
+            None => RsaKeyPair::new()?,
         };
         Self::store_pk(fs, pk, encryptor)?;
         state.set_master_password(password.to_string());
@@ -35,7 +35,7 @@ impl MasterPassword {
 
     fn store_pk(
         fs: &FileSystem,
-        pk: RSA,
+        pk: RsaKeyPair,
         password_encryptor: AES,
     ) -> Result<()> {
         let master_pk = fs.master_pk();
