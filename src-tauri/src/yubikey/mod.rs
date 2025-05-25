@@ -164,11 +164,23 @@ impl YubiKeyDevice {
         Ok(Self { yk })
     }
 
-    /// Retrieves the public key from the YubiKey's Key Management slot.
-    pub fn get_public_key(&mut self) -> Result<String> {
+    /// Retrieves the public key from the YubiKey's Key Management slot and its algorithm ID.
+    pub fn get_public_key(&mut self) -> Result<(String, piv::AlgorithmId)> {
         use rsa::pkcs1::der::EncodePem;
         let slot = piv::SlotId::KeyManagement;
+
+        // Get metadata to find out the algorithm
+        let metadata = piv::metadata(&mut self.yk, slot)
+            .map_err(|e| Error::YubiKeyError(format!("Failed to get metadata from slot {:?}: {}", slot, e)))?;
         
+        let algorithm_id = match metadata.algorithm {
+            piv::ManagementAlgorithmId::Asymmetric(alg_id) => alg_id,
+            _ => return Err(Error::YubiKeyError(format!(
+                "Slot {:?} does not contain an asymmetric key, found algorithm: {:?}",
+                slot, metadata.algorithm
+            ))),
+        };
+
         // Ensure PIN is verified if required by YubiKey policy for reading certificate/pubkey
         // This depends on YubiKey's PIV configuration. For simplicity, assuming it might not always be needed
         // or that prior operations (like decrypt/sign which verify PIN) are sufficient.
@@ -180,12 +192,12 @@ impl YubiKeyDevice {
         
         let pem = cert.subject_pki().to_pem(rsa::pkcs1::der::pem::LineEnding::LF)
             .map_err(|e| Error::YubiKeyError(format!("Failed to encode public key to PEM: {}", e)))?;
-        Ok(pem)
+        Ok((pem, algorithm_id))
     }
 
     /// Encrypts data using the YubiKey's public key (retrieved from the device).
     pub fn encrypt_data(&mut self, data: Vec<u8>) -> Result<String> {
-        let pub_key_pem = self.get_public_key()?; // This method now takes &mut self
+        let (pub_key_pem, _algorithm_id) = self.get_public_key()?; // algorithm_id is not used here but fetched
         let encryptor = encrypt::PublicKey::from_pem(&pub_key_pem)?;
         let encrypted_bytes = encryptor.encrypt(&data)?;
         Ok(base64::engine::general_purpose::STANDARD.encode(&encrypted_bytes))
@@ -323,7 +335,7 @@ impl YubiKeyDevice {
         // However, to satisfy the function signature that expects a Result,
         // and in case ManagementAlgorithmId gains new variants not handled above,
         // we can leave a general error here. Or, if the match is truly exhaustive,
-        // this line might not even be strictly necessary if the compiler understands all paths return.
+        // this line might not be strictly necessary if the compiler understands all paths return.
         // For robustness against future enum changes if not recompiled, or if a variant was missed:
         // Err(Error::YubiKeyError(format!(
         //     "Unhandled or unsuitable algorithm type {:?} for signing in slot {:?}.",
@@ -333,7 +345,7 @@ impl YubiKeyDevice {
 }
 
 /// Get the public key from a YubiKey by serial number
-pub fn get_public_key(yubikey_serial: u32) -> Result<String> {
+pub fn get_public_key(yubikey_serial: u32) -> Result<(String, piv::AlgorithmId)> {
     let mut device = YubiKeyDevice::open(yubikey_serial)?;
     device.get_public_key()
 }
@@ -450,6 +462,31 @@ mod test {
         let decrypted_data_final_str = decrypted_string_result.unwrap();
 
         assert_eq!(decrypted_data_final_str, original_data_str, "Decrypted string does not match original string.");
+    }
+
+    #[test]
+    fn test_get_public_key_success() {
+        let yubikey_serial = 32233649; // Standard test serial, ensure this YubiKey is available and configured
+
+        let result = get_public_key(yubikey_serial);
+        assert!(result.is_ok(), "get_public_key failed: {:?}", result.err());
+
+        let (pem, algorithm_id) = result.unwrap();
+        assert!(!pem.is_empty(), "PEM string should not be empty");
+        assert!(pem.starts_with("-----BEGIN PUBLIC KEY-----"), "PEM string should start with -----BEGIN PUBLIC KEY-----");
+        assert!(pem.ends_with("-----END PUBLIC KEY-----\n"), "PEM string should end with -----END PUBLIC KEY-----\n");
+
+        // Check if the algorithm ID is one of the expected asymmetric types
+        match algorithm_id {
+            piv::AlgorithmId::Rsa1024 |
+            piv::AlgorithmId::Rsa2048 |
+            piv::AlgorithmId::EccP256 |
+            piv::AlgorithmId::EccP384 => {
+                // This is an expected asymmetric algorithm
+                println!("Successfully retrieved public key with algorithm: {:?}", algorithm_id);
+            },
+            _ => panic!("Unexpected or unsupported algorithm ID for KeyManagement slot: {:?}", algorithm_id),
+        }
     }
 
     #[test]
