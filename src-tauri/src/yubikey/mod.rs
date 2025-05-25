@@ -263,21 +263,72 @@ impl YubiKeyDevice {
         self.yk.verify_pin(pin.as_bytes())
             .map_err(|e| Error::YubiKeyError(format!("PIN verification failed: {}", e)))?;
 
-        let slot = piv::SlotId::Authentication;
+        let slot = piv::SlotId::Authentication; // Slot 9A
+
+        let key_metadata = piv::metadata(&mut self.yk, slot)
+            .map_err(|e| Error::YubiKeyError(format!("Failed to read PIV metadata for slot {:?}: {}", slot, e)))?;
+        
+        let algorithm_from_metadata = key_metadata.algorithm;
+
         let challenge_bytes = base64::engine::general_purpose::STANDARD
             .decode(challenge_base64)
             .map_err(|e| Error::YubiKeyError(format!("Invalid challenge format (base64 decode failed): {}", e)))?;
         
-        // TODO: Select the algorithm based on the key metadata in the Authentication slot.
-        let algorithm = piv::AlgorithmId::Rsa2048; 
+        match algorithm_from_metadata {
+            piv::ManagementAlgorithmId::Asymmetric(alg_id) => {
+                match alg_id {
+                    piv::AlgorithmId::Rsa1024 | piv::AlgorithmId::Rsa2048 | piv::AlgorithmId::EccP256 => {
+                        if challenge_bytes.len() != 32 {
+                            return Err(Error::YubiKeyError(format!(
+                                "Challenge size mismatch for {:?}: expected 32 bytes, got {}. This indicates an issue with challenge generation or decoding.",
+                                alg_id, challenge_bytes.len()
+                            )));
+                        }
+                    }
+                    piv::AlgorithmId::EccP384 => {
+                        if challenge_bytes.len() != 32 {
+                            return Err(Error::YubiKeyError(format!(
+                                "Challenge size mismatch for {:?}: expected 32 bytes (current setup), got {}. Note: {:?} typically uses a 48-byte hash (SHA-384).",
+                                alg_id, challenge_bytes.len(), alg_id
+                            )));
+                        }
+                        // println!("Warning: Using a 32-byte challenge for {:?}. This algorithm usually expects a 48-byte (SHA-384) hash input for piv::sign_data.", alg_id);
+                    }
+                }
+                // Proceed to sign_data with alg_id
+                let signature_bytes = piv::sign_data(&mut self.yk, &challenge_bytes, alg_id, slot)
+                    .map_err(|e| Error::YubiKeyError(format!("Failed to sign challenge with algorithm {:?} in slot {:?}: {}", alg_id, slot, e)))?;
 
-        let signature_bytes = piv::sign_data(&mut self.yk, &challenge_bytes, algorithm, slot)
-            .map_err(|e| Error::YubiKeyError(format!("Failed to sign challenge: {}", e)))?;
-
-        if signature_bytes.is_empty() {
-            return Err(Error::YubiKeyError("Authentication failed: produced an empty signature".to_string()));
+                if signature_bytes.is_empty() {
+                    return Err(Error::YubiKeyError(format!("Authentication failed: produced an empty signature with algorithm {:?} in slot {:?}", alg_id, slot)));
+                }
+                return Ok(base64::engine::general_purpose::STANDARD.encode(&signature_bytes));
+            }
+            piv::ManagementAlgorithmId::ThreeDes => { // Corrected casing
+                return Err(Error::YubiKeyError(format!(
+                    "Algorithm {:?} in slot {:?} is symmetric and cannot be used for signing.",
+                    algorithm_from_metadata, slot
+                )));
+            }
+            piv::ManagementAlgorithmId::PinPuk => {
+                 return Err(Error::YubiKeyError(format!(
+                    "Algorithm {:?} in slot {:?} is for PIN/PUK management and cannot be used for signing.",
+                    algorithm_from_metadata, slot
+                )));
+            }
+            // The compiler will ensure this match is exhaustive for ManagementAlgorithmId variants.
+            // If all variants return, any code after this match would be unreachable.
         }
-        Ok(base64::engine::general_purpose::STANDARD.encode(&signature_bytes))
+        // If the match is exhaustive and all arms return, this line will be flagged as unreachable by the compiler, which is expected.
+        // However, to satisfy the function signature that expects a Result,
+        // and in case ManagementAlgorithmId gains new variants not handled above,
+        // we can leave a general error here. Or, if the match is truly exhaustive,
+        // this line might not even be strictly necessary if the compiler understands all paths return.
+        // For robustness against future enum changes if not recompiled, or if a variant was missed:
+        // Err(Error::YubiKeyError(format!(
+        //     "Unhandled or unsuitable algorithm type {:?} for signing in slot {:?}.",
+        //     algorithm_from_metadata, slot
+        // )))
     }
 }
 
@@ -401,16 +452,60 @@ mod test {
         assert_eq!(decrypted_data_final_str, original_data_str, "Decrypted string does not match original string.");
     }
 
-    // #[test]
-    // fn test_yubikey_encrypt_decrypt() {
-    //     let data = "Hello, YubiKey!";
-    //     let yubikey_serial = 13062801;
+    #[test]
+    fn test_yubikey_device_authenticate_success() {
+        let yubikey_serial = 32233649; // Standard test serial
+        let pin = "123456".to_string();    // Standard test PIN
+        let challenge = generate_yubikey_challenge().unwrap();
 
-    //     let encrypted = super::encrypt_with_yubikey(yubikey_serial, data).unwrap();
-    //     assert_ne!(encrypted, data);
+        let device_result = YubiKeyDevice::open(yubikey_serial);
+        assert!(device_result.is_ok(), "Failed to open YubiKeyDevice for testing: {:?}", device_result.err());
+        let mut device = device_result.unwrap();
 
-    //     // Decrypt the data
-    //     // let decrypted = super::decrypt_with_yubikey(yubikey_serial, &encrypted).unwrap();
-    //     // assert_eq!(decrypted, data);
-    // }
+        let signature_result = device.authenticate(pin, &challenge);
+        
+        assert!(signature_result.is_ok(), "YubiKeyDevice.authenticate failed: {:?}", signature_result.err());
+        let signature_base64 = signature_result.unwrap();
+        assert!(!signature_base64.is_empty(), "Signature from YubiKeyDevice.authenticate should not be empty");
+    }
+
+    #[test]
+    fn test_yubikey_device_authenticate_incorrect_pin() {
+        let yubikey_serial = 32233649;
+        let incorrect_pin = "000000".to_string(); // An incorrect PIN
+        let challenge = generate_yubikey_challenge().unwrap();
+
+        let device_result = YubiKeyDevice::open(yubikey_serial);
+        assert!(device_result.is_ok(), "Failed to open YubiKeyDevice for testing: {:?}", device_result.err());
+        let mut device = device_result.unwrap();
+
+        let signature_result = device.authenticate(incorrect_pin, &challenge);
+        
+        assert!(signature_result.is_err(), "YubiKeyDevice.authenticate should fail with an incorrect PIN");
+        if let Err(Error::YubiKeyError(msg)) = signature_result {
+            assert!(msg.starts_with("PIN verification failed:"), "Error message mismatch for incorrect PIN. Got: {}", msg);
+        } else {
+            panic!("Expected YubiKeyError for incorrect PIN, got {:?}", signature_result);
+        }
+    }
+
+    #[test]
+    fn test_yubikey_device_authenticate_malformed_challenge() {
+        let yubikey_serial = 32233649;
+        let pin = "123456".to_string();
+        let malformed_challenge = "this is not valid base64 characters !!!"; // Malformed challenge
+
+        let device_result = YubiKeyDevice::open(yubikey_serial);
+        assert!(device_result.is_ok(), "Failed to open YubiKeyDevice for testing: {:?}", device_result.err());
+        let mut device = device_result.unwrap();
+
+        let signature_result = device.authenticate(pin, malformed_challenge);
+        
+        assert!(signature_result.is_err(), "YubiKeyDevice.authenticate should fail with a malformed challenge");
+        if let Err(Error::YubiKeyError(msg)) = signature_result {
+            assert!(msg.contains("Invalid challenge format (base64 decode failed):"), "Error message mismatch for malformed challenge. Got: {}", msg);
+        } else {
+            panic!("Expected YubiKeyError for malformed challenge, got {:?}", signature_result);
+        }
+    }
 }
