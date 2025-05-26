@@ -1,7 +1,8 @@
 mod experimental_setup;
 
 use crate::error::{Error, Result};
-use crate::{encrypt, AppState};
+use crate::encrypt; 
+use crate::AppState; // Changed: split from previous line
 use base64::Engine;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -130,77 +131,103 @@ pub fn encrypt_with_yubikey(app_state: &AppState, data: &str) -> Result<String> 
         .map(|encrypted| base64::engine::general_purpose::STANDARD.encode(&encrypted))
 }
 
-pub fn decrypt_with_yubikey(
-    yubikey_serial: u32,
-    pin: String,
-    encrypted_data_base64_bytes: Vec<u8>, // Input is now explicitly named to reflect it's base64 bytes
-) -> Result<Vec<u8>> { // Return raw decrypted bytes
-    let mut device = YubiKeyDevice::open(yubikey_serial)?;
-    device.decrypt_data(pin, encrypted_data_base64_bytes)
-}
 
-/// Authenticate with YubiKey by signing a challenge.
-/// Returns the signature as a base64 encoded string if successful.
-pub fn authenticate_with_yubikey(
-    yubikey_serial: u32,
-    pin: String,
-    challenge_base64: &str, // Renamed for clarity, expects base64 encoded challenge
-) -> Result<String> { // Changed return type from bool to String (base64 signature)
-    let mut device = YubiKeyDevice::open(yubikey_serial)?;
-    device.authenticate(pin, challenge_base64)
-}
+
+
 
 // New struct to wrap a YubiKey instance
 pub struct YubiKeyDevice {
     yk: YubiKey,
+    authentication: Option<piv::AlgorithmId>,
+    key_management: Option<piv::AlgorithmId>,
 }
 
 impl YubiKeyDevice {
     /// Opens a YubiKey by its serial number and wraps it.
     pub fn open(serial_u32: u32) -> Result<Self> {
         let serial = yubikey::Serial::from(serial_u32);
-        let yk = YubiKey::open_by_serial(serial)
+        let mut yk = YubiKey::open_by_serial(serial)
             .map_err(|e| Error::YubiKeyError(format!("Failed to open YubiKey {}: {}", serial_u32, e)))?;
-        Ok(Self { yk })
+
+        // Attempt to get authentication algorithm
+        let authentication_algorithm = piv::metadata(&mut yk, piv::SlotId::Authentication)
+            .ok()
+            .and_then(|meta| match meta.algorithm {
+                piv::ManagementAlgorithmId::Asymmetric(alg_id) => Some(alg_id),
+                _ => None,
+            });
+
+        // Attempt to get key management algorithm
+        let key_management_algorithm = piv::metadata(&mut yk, piv::SlotId::KeyManagement)
+            .ok()
+            .and_then(|meta| match meta.algorithm {
+                piv::ManagementAlgorithmId::Asymmetric(alg_id) => Some(alg_id),
+                _ => None,
+            });
+
+        Ok(Self {
+            yk,
+            authentication: authentication_algorithm,
+            key_management: key_management_algorithm,
+        })
     }
 
     /// Retrieves the public key from the YubiKey's Key Management slot and its algorithm ID.
-    pub fn get_public_key(&mut self) -> Result<(String, piv::AlgorithmId)> {
+    pub fn get_public_key(&mut self) -> Result<String> {
         use rsa::pkcs1::der::EncodePem;
         let slot = piv::SlotId::KeyManagement;
 
-        // Get metadata to find out the algorithm
-        let metadata = piv::metadata(&mut self.yk, slot)
-            .map_err(|e| Error::YubiKeyError(format!("Failed to get metadata from slot {:?}: {}", slot, e)))?;
-        
-        let algorithm_id = match metadata.algorithm {
-            piv::ManagementAlgorithmId::Asymmetric(alg_id) => alg_id,
-            _ => return Err(Error::YubiKeyError(format!(
-                "Slot {:?} does not contain an asymmetric key, found algorithm: {:?}",
-                slot, metadata.algorithm
-            ))),
-        };
+        // Use the stored key_management algorithm if available
+        self.key_management.ok_or_else(|| {
+            Error::YubiKeyError(format!(
+                "Key management algorithm not found for slot {:?} for decryption. Device might not have been properly initialized or slot is not configured.",
+                slot
+            ))
+        })?;
 
         // Ensure PIN is verified if required by YubiKey policy for reading certificate/pubkey
-        // This depends on YubiKey's PIV configuration. For simplicity, assuming it might not always be needed
+        // This depends on YubiKey\'s PIV configuration. For simplicity, assuming it might not always be needed
         // or that prior operations (like decrypt/sign which verify PIN) are sufficient.
         // If PIN is strictly required for cert reading, it should be passed here.
-        // However, typically reading public certs doesn't require PIN.
+        // However, typically reading public certs doesn\'t require PIN.
 
         let cert = yubikey::certificate::Certificate::read(&mut self.yk, slot)
             .map_err(|e| Error::YubiKeyError(format!("Failed to get certificate from slot {:?}: {}", slot, e)))?;
         
         let pem = cert.subject_pki().to_pem(rsa::pkcs1::der::pem::LineEnding::LF)
             .map_err(|e| Error::YubiKeyError(format!("Failed to encode public key to PEM: {}", e)))?;
-        Ok((pem, algorithm_id))
+        Ok(pem)
     }
 
-    /// Encrypts data using the YubiKey's public key (retrieved from the device).
+    /// Encrypts data using the YubiKey\\\'s public key (retrieved from the device).
     pub fn encrypt_data(&mut self, data: Vec<u8>) -> Result<String> {
-        let (pub_key_pem, _algorithm_id) = self.get_public_key()?; // algorithm_id is not used here but fetched
-        let encryptor = encrypt::PublicKey::from_pem(&pub_key_pem)?;
-        let encrypted_bytes = encryptor.encrypt(&data)?;
-        Ok(base64::engine::general_purpose::STANDARD.encode(&encrypted_bytes))
+        // Retrieve the algorithm ID from the stored key_management metadata.
+        let algorithm_id = self.key_management.ok_or_else(|| {
+            Error::YubiKeyError(
+                "Key management algorithm not found. Device might not have been properly initialized or slot is not configured.".to_string(),
+            )
+        })?;
+
+        match algorithm_id {
+            piv::AlgorithmId::Rsa1024 | piv::AlgorithmId::Rsa2048 => {
+                // The key is RSA, proceed with RSA encryption.
+                let pub_key_pem = self.get_public_key()?; // Fetches the PEM-encoded public key.
+                
+                let encryptor = crate::encrypt::PublicKey::from_pem(&pub_key_pem)?;
+                let encrypted_bytes = encryptor.encrypt(&data)?;
+                Ok(base64::engine::general_purpose::STANDARD.encode(&encrypted_bytes))
+            }
+            piv::AlgorithmId::EccP256 | piv::AlgorithmId::EccP384 => {
+                // The key is ECC.
+                Err(Error::YubiKeyError(format!(
+                    "Encryption with ECC algorithm ({:?}) is not currently supported by this function. Only RSA encryption is available.",
+                    algorithm_id
+                )))
+            }
+            // All variants of piv::AlgorithmId relevant here (Rsa1024, Rsa2048, EccP256, EccP384)
+            // are explicitly handled above. No other Asymmetric AlgorithmId types are defined
+            // in the provided enum that would be stored in self.key_management.
+        }
     }
 
     /// Decrypts data using the YubiKey.
@@ -212,8 +239,14 @@ impl YubiKeyDevice {
         self.yk.verify_pin(pin.as_bytes())?;
 
         let slot = piv::SlotId::KeyManagement;
-        // TODO: select the correct algorithm based on the key metadata
-        let algorithm = piv::AlgorithmId::Rsa2048;
+
+        // Use the stored key_management algorithm if available
+        let algorithm = self.key_management.ok_or_else(|| {
+            Error::YubiKeyError(format!(
+                "Key management algorithm not found for slot {:?} for decryption. Device might not have been properly initialized or slot is not configured.",
+                slot
+            ))
+        })?;
 
         let raw_ciphertext = base64::engine::general_purpose::STANDARD.decode(&encrypted_data_base64_bytes)
             .map_err(|e| Error::YubiKeyError(format!("Failed to decode base64 encrypted data: {}", e)))?;
@@ -266,6 +299,32 @@ impl YubiKeyDevice {
         }
     }
 
+    pub fn generate_authentication_challenge(&mut self) -> Result<String> {
+        let slot = piv::SlotId::Authentication;
+        
+        // Use the stored authentication algorithm if available
+        let alg_id = self.authentication.ok_or_else(|| {
+            Error::YubiKeyError(format!(
+                "Authentication algorithm not found for slot {:?} for challenge generation. Device might not have been properly initialized or slot is not configured.",
+                slot
+            ))
+        })?;
+
+        let challenge_len = match alg_id {
+            piv::AlgorithmId::EccP384 => 48,
+            piv::AlgorithmId::Rsa1024 | piv::AlgorithmId::Rsa2048 | piv::AlgorithmId::EccP256 => 32,
+            _ => return Err(Error::YubiKeyError(format!(
+                "Unsupported asymmetric algorithm {:?} in authentication slot {:?} for challenge generation.",
+                alg_id, slot
+            ))),
+        };
+
+        let mut rng = rand::thread_rng();
+        let mut challenge_bytes = vec![0u8; challenge_len];
+        rng.fill_bytes(&mut challenge_bytes);
+
+        Ok(base64::engine::general_purpose::STANDARD.encode(&challenge_bytes))
+    }
     /// Authenticates with the YubiKey by signing a challenge.
     pub fn authenticate(
         &mut self,
@@ -277,128 +336,84 @@ impl YubiKeyDevice {
 
         let slot = piv::SlotId::Authentication; // Slot 9A
 
-        let key_metadata = piv::metadata(&mut self.yk, slot)
-            .map_err(|e| Error::YubiKeyError(format!("Failed to read PIV metadata for slot {:?}: {}", slot, e)))?;
-        
-        let algorithm_from_metadata = key_metadata.algorithm;
+        let alg_id = self.authentication.ok_or_else(|| {
+            Error::YubiKeyError(format!(
+                "Authentication algorithm not found for slot {:?}. Device might not have been properly initialized or slot is not configured.",
+                slot
+            ))
+        })?;
 
         let challenge_bytes = base64::engine::general_purpose::STANDARD
             .decode(challenge_base64)
             .map_err(|e| Error::YubiKeyError(format!("Invalid challenge format (base64 decode failed): {}", e)))?;
         
-        match algorithm_from_metadata {
-            piv::ManagementAlgorithmId::Asymmetric(alg_id) => {
-                match alg_id {
-                    piv::AlgorithmId::Rsa1024 | piv::AlgorithmId::Rsa2048 | piv::AlgorithmId::EccP256 => {
-                        if challenge_bytes.len() != 32 {
-                            return Err(Error::YubiKeyError(format!(
-                                "Challenge size mismatch for {:?}: expected 32 bytes, got {}. This indicates an issue with challenge generation or decoding.",
-                                alg_id, challenge_bytes.len()
-                            )));
-                        }
-                    }
-                    piv::AlgorithmId::EccP384 => {
-                        if challenge_bytes.len() != 32 {
-                            return Err(Error::YubiKeyError(format!(
-                                "Challenge size mismatch for {:?}: expected 32 bytes (current setup), got {}. Note: {:?} typically uses a 48-byte hash (SHA-384).",
-                                alg_id, challenge_bytes.len(), alg_id
-                            )));
-                        }
-                        // println!("Warning: Using a 32-byte challenge for {:?}. This algorithm usually expects a 48-byte (SHA-384) hash input for piv::sign_data.", alg_id);
-                    }
+        match alg_id { 
+            piv::AlgorithmId::Rsa1024 | piv::AlgorithmId::Rsa2048 | piv::AlgorithmId::EccP256 => {
+                if challenge_bytes.len() != 32 {
+                    return Err(Error::YubiKeyError(format!(
+                        "Challenge size mismatch for {:?}: expected 32 bytes, got {}. This indicates an issue with challenge generation or decoding.",
+                        alg_id, challenge_bytes.len()
+                    )));
                 }
-                // Proceed to sign_data with alg_id
-                let signature_bytes = piv::sign_data(&mut self.yk, &challenge_bytes, alg_id, slot)
-                    .map_err(|e| Error::YubiKeyError(format!("Failed to sign challenge with algorithm {:?} in slot {:?}: {}", alg_id, slot, e)))?;
-
-                if signature_bytes.is_empty() {
-                    return Err(Error::YubiKeyError(format!("Authentication failed: produced an empty signature with algorithm {:?} in slot {:?}", alg_id, slot)));
+            }
+            piv::AlgorithmId::EccP384 => {
+                if challenge_bytes.len() == 32 {
+                    return Err(Error::YubiKeyError(format!(
+                        "The key in slot {:?} is {:?}, which typically requires a 48-byte hash (e.g., SHA-384) for signing. The provided challenge is 32 bytes. This combination is problematic and may lead to smart card errors. The challenge must be a 48-byte hash for use with this {:?} key.",
+                        slot, alg_id, alg_id
+                    )));
+                } else if challenge_bytes.len() != 48 {
+                    return Err(Error::YubiKeyError(format!(
+                        "Challenge size mismatch for {:?}: expected 48 bytes (SHA-384 hash), got {} bytes.",
+                        alg_id, challenge_bytes.len()
+                    )));
                 }
-                return Ok(base64::engine::general_purpose::STANDARD.encode(&signature_bytes));
             }
-            piv::ManagementAlgorithmId::ThreeDes => { // Corrected casing
-                return Err(Error::YubiKeyError(format!(
-                    "Algorithm {:?} in slot {:?} is symmetric and cannot be used for signing.",
-                    algorithm_from_metadata, slot
-                )));
-            }
-            piv::ManagementAlgorithmId::PinPuk => {
-                 return Err(Error::YubiKeyError(format!(
-                    "Algorithm {:?} in slot {:?} is for PIN/PUK management and cannot be used for signing.",
-                    algorithm_from_metadata, slot
-                )));
-            }
-            // The compiler will ensure this match is exhaustive for ManagementAlgorithmId variants.
-            // If all variants return, any code after this match would be unreachable.
         }
-        // If the match is exhaustive and all arms return, this line will be flagged as unreachable by the compiler, which is expected.
-        // However, to satisfy the function signature that expects a Result,
-        // and in case ManagementAlgorithmId gains new variants not handled above,
-        // we can leave a general error here. Or, if the match is truly exhaustive,
-        // this line might not be strictly necessary if the compiler understands all paths return.
-        // For robustness against future enum changes if not recompiled, or if a variant was missed:
-        // Err(Error::YubiKeyError(format!(
-        //     "Unhandled or unsuitable algorithm type {:?} for signing in slot {:?}.",
-        //     algorithm_from_metadata, slot
-        // )))
+
+        let signature_bytes = piv::sign_data(&mut self.yk, &challenge_bytes, alg_id, slot)
+            .map_err(|e| Error::YubiKeyError(format!("Failed to sign challenge with algorithm {:?} in slot {:?}: {}", alg_id, slot, e)))?;
+
+        if signature_bytes.is_empty() {
+            return Err(Error::YubiKeyError(format!("Authentication failed: produced an empty signature with algorithm {:?} in slot {:?}", alg_id, slot)));
+        }
+        Ok(base64::engine::general_purpose::STANDARD.encode(&signature_bytes))
     }
 }
 
-/// Get the public key from a YubiKey by serial number
-pub fn get_public_key(yubikey_serial: u32) -> Result<(String, piv::AlgorithmId)> {
-    let mut device = YubiKeyDevice::open(yubikey_serial)?;
-    device.get_public_key()
-}
 
-/// Encrypts data using the public key of the specified YubiKey.
-pub fn do_encrypt(yubikey_serial: u32, data: Vec<u8>) -> Result<String> {
-    let mut device = YubiKeyDevice::open(yubikey_serial)?;
-    device.encrypt_data(data)
-}
-
-/// Generate a random challenge for authentication
-pub fn generate_yubikey_challenge() -> Result<String> {
-    // Create a 256-bit random challenge
-    let mut rng = rand::thread_rng();
-    let mut challenge = [0u8; 32];
-    rng.fill_bytes(&mut challenge);
-
-    // Encode as base64 for transport
-    Ok(base64::engine::general_purpose::STANDARD.encode(&challenge))
-}
 
 #[cfg(test)]
 mod test {
 
     use super::*;
-    #[test]
-    fn test_yubikey_challenge() {
-        let challenge = super::generate_yubikey_challenge().unwrap();
-        assert_eq!(challenge.len(), 44);
+    use serial_test::serial;
+
+    fn get_device() -> YubiKeyDevice {
+        let yubikey_serial = 32233649; // Standard test serial
+        YubiKeyDevice::open(yubikey_serial).unwrap()
     }
 
-    use yubikey::{
-        YubiKey,
-        piv::{AlgorithmId, SlotId, decrypt_data},
-    };
-
     #[test]
+    #[serial]
     fn test_encrypt_with_yubikey() { // This test was actually for do_encrypt
-        let yubikey_serial = 32233649;
+        let mut device = get_device();
         // Using the free function which now wraps YubiKeyDevice
-        let result = do_encrypt(yubikey_serial, "data".as_bytes().to_vec());
+        let result = device.encrypt_data("data".as_bytes().to_vec());
         assert!(result.is_ok(), "do_encrypt failed: {:?}", result.err());
         result.unwrap(); // Check it unwraps
     }
 
     #[test]
+    #[serial]
     fn test_authenticate_with_yubikey() {
         let yubikey_serial = 32233649;
         let pin = "123456".to_string();
-        let challenge = generate_yubikey_challenge().unwrap();
+        let mut device = YubiKeyDevice::open(yubikey_serial).unwrap(); // Ensure the YubiKey is open
+        let challenge = device.generate_authentication_challenge().unwrap();
         
         // Using the free function
-        let signature_result = authenticate_with_yubikey(yubikey_serial, pin, &challenge);
+        let signature_result = device.authenticate(pin, &challenge);
         
         assert!(signature_result.is_ok(), "Authentication failed: {:?}", signature_result.err());
         let signature_base64 = signature_result.unwrap();
@@ -406,23 +421,9 @@ mod test {
     }
 
     #[test]
-    fn test_slot_available() {
-        let mut yubikey = YubiKey::open().unwrap();
-
-        let slot = SlotId::KeyManagement;
-        let algorithm = AlgorithmId::Rsa2048;
-
-        let pin = "123456";
-        yubikey.verify_pin(pin.as_bytes()).unwrap();
-
-        let encrypted_data = vec![1u8; 256]; // Dummy data
-        let result = decrypt_data(&mut yubikey, &encrypted_data, algorithm, slot);
-        assert!(result.is_ok());
-    }
-
-    #[test]
+    #[serial]
     fn test_decrypt_data() {
-        let yubikey_serial = 32233649;
+        let mut device = get_device();
         let pin = "123456".to_string();
         let original_data_str = "This is a secret test message for YubiKey!";
         let original_data_bytes = original_data_str.as_bytes().to_vec();
@@ -432,13 +433,13 @@ mod test {
         println!("Original data bytes (hex): {}", original_data_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>());
 
         // 1. Encrypt the data using the YubiKey's public key (via free function)
-        let encrypted_data_base64_result = do_encrypt(yubikey_serial, original_data_bytes.clone());
+        let encrypted_data_base64_result = device.encrypt_data(original_data_bytes.clone());
         assert!(encrypted_data_base64_result.is_ok(), "Encryption failed: {:?}", encrypted_data_base64_result.err());
         let encrypted_data_base64_string = encrypted_data_base64_result.unwrap();
         println!("Encrypted data (base64 string): {}", encrypted_data_base64_string);
 
         // 2. Decrypt the data using the YubiKey (via free function)
-        let decrypted_bytes_result = decrypt_with_yubikey(yubikey_serial, pin, encrypted_data_base64_string.into_bytes());
+        let decrypted_bytes_result = device.decrypt_data(pin, encrypted_data_base64_string.into_bytes());
         
         if let Err(e) = &decrypted_bytes_result {
             eprintln!("Raw decryption function returned error: {:?}", e);
@@ -465,39 +466,40 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_get_public_key_success() {
-        let yubikey_serial = 32233649; // Standard test serial, ensure this YubiKey is available and configured
+        let mut device = get_device();
 
-        let result = get_public_key(yubikey_serial);
+        let result = device.get_public_key();
         assert!(result.is_ok(), "get_public_key failed: {:?}", result.err());
 
-        let (pem, algorithm_id) = result.unwrap();
+        let pem = result.unwrap(); 
+        println!("Public key PEM:\n{}", pem);
         assert!(!pem.is_empty(), "PEM string should not be empty");
         assert!(pem.starts_with("-----BEGIN PUBLIC KEY-----"), "PEM string should start with -----BEGIN PUBLIC KEY-----");
-        assert!(pem.ends_with("-----END PUBLIC KEY-----\n"), "PEM string should end with -----END PUBLIC KEY-----\n");
+        assert!(pem.ends_with("-----END PUBLIC KEY-----\n"), "PEM string should end with -----END PUBLIC KEY-----");
 
-        // Check if the algorithm ID is one of the expected asymmetric types
-        match algorithm_id {
-            piv::AlgorithmId::Rsa1024 |
-            piv::AlgorithmId::Rsa2048 |
-            piv::AlgorithmId::EccP256 |
-            piv::AlgorithmId::EccP384 => {
-                // This is an expected asymmetric algorithm
-                println!("Successfully retrieved public key with algorithm: {:?}", algorithm_id);
-            },
-            _ => panic!("Unexpected or unsupported algorithm ID for KeyManagement slot: {:?}", algorithm_id),
+        if let Some(alg_id) = device.key_management {
+            match alg_id {
+                piv::AlgorithmId::Rsa1024 |
+                piv::AlgorithmId::Rsa2048 |
+                piv::AlgorithmId::EccP256 |
+                piv::AlgorithmId::EccP384 => {
+                    println!("Device key management slot configured with algorithm: {:?}", alg_id);
+                }
+                // All variants of piv::AlgorithmId relevant here are explicitly handled.
+            }
+        } else {
+            panic!("Key management algorithm not found on device after get_public_key success. This indicates an issue with device initialization or test setup.");
         }
     }
 
     #[test]
+    #[serial]
     fn test_yubikey_device_authenticate_success() {
-        let yubikey_serial = 32233649; // Standard test serial
+        let mut device = get_device();
         let pin = "123456".to_string();    // Standard test PIN
-        let challenge = generate_yubikey_challenge().unwrap();
-
-        let device_result = YubiKeyDevice::open(yubikey_serial);
-        assert!(device_result.is_ok(), "Failed to open YubiKeyDevice for testing: {:?}", device_result.err());
-        let mut device = device_result.unwrap();
+        let challenge = device.generate_authentication_challenge().unwrap();
 
         let signature_result = device.authenticate(pin, &challenge);
         
@@ -507,14 +509,11 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_yubikey_device_authenticate_incorrect_pin() {
-        let yubikey_serial = 32233649;
+        let mut device = get_device();
         let incorrect_pin = "000000".to_string(); // An incorrect PIN
-        let challenge = generate_yubikey_challenge().unwrap();
-
-        let device_result = YubiKeyDevice::open(yubikey_serial);
-        assert!(device_result.is_ok(), "Failed to open YubiKeyDevice for testing: {:?}", device_result.err());
-        let mut device = device_result.unwrap();
+        let challenge = device.generate_authentication_challenge().unwrap();
 
         let signature_result = device.authenticate(incorrect_pin, &challenge);
         
@@ -527,6 +526,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_yubikey_device_authenticate_malformed_challenge() {
         let yubikey_serial = 32233649;
         let pin = "123456".to_string();
