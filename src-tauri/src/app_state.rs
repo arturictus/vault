@@ -32,7 +32,7 @@ impl Default for AppState {
 impl AppState {
     #[cfg(test)]
     pub fn new_test(password: &str) -> Self {
-        use std::fs;
+        use std::{fs, path::Path};
         use crate::encrypt::MasterPassword;
         // Initialize the empty state
         let mut state = Self::new_unauthenticated_test();
@@ -41,7 +41,8 @@ impl AppState {
         
         // Yubikey default settings
         let mut yubikey = crate::yubikey::YubiKeyInfo::default();
-        fs::read("test/fixtures/pubkey.pem").map(|key| {
+        
+        fs::read("tests/fixtures/pubkey.pem").map(|key| {
             yubikey.set_pub_key(String::from_utf8_lossy(&key).to_string());
         }).unwrap();
         yubikey.save(&state).unwrap();
