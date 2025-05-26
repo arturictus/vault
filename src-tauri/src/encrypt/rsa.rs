@@ -2,8 +2,6 @@ use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding, DecodePublicKey},
     Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
     signature::Verifier as RsaVerifier,
-    signature::Signer, 
-    signature::SignatureEncoding,
     sha2::Sha256,
     pkcs1v15::Signature as RsaSignature, 
 };
@@ -152,8 +150,8 @@ mod tests {
 
     fn state() -> AppState {
         let password = "password";
-        let state = AppState::new_test(&password);
-        state
+        
+        AppState::new_test(password)
     }
 
     #[test]

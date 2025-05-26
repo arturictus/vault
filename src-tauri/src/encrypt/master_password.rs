@@ -100,7 +100,7 @@ mod tests {
         let password = "secret";
         MasterPassword::save(&mut app_state, password, None).unwrap();
         assert_eq!(app_state.master_password().unwrap(), password);
-        assert_eq!(app_state.is_authenticated(), true);
+        assert!(app_state.is_authenticated());
         assert!(app_state.file_system().master_pk().exists());
         assert!(app_state.file_system().master_pub().exists());
     }
@@ -113,7 +113,7 @@ mod tests {
         assert!(app_state.file_system().master_pub().exists());
         MasterPassword::verify(&mut app_state, password).unwrap();
         assert_eq!(app_state.master_password().unwrap(), password);
-        assert_eq!(app_state.is_authenticated(), true);
+        assert!(app_state.is_authenticated());
     }
 
     #[test]

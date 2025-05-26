@@ -1,7 +1,7 @@
 mod experimental_setup;
 
 use crate::error::{Error, Result};
-use crate::encrypt; 
+ 
 use crate::AppState; // Changed: split from previous line
 use base64::Engine;
 use rand::RngCore;
@@ -252,7 +252,7 @@ impl YubiKeyDevice {
             .map_err(|e| Error::YubiKeyError(format!("Failed to decode base64 encrypted data: {}", e)))?;
 
         let decrypted_zeroizing_vec = piv::decrypt_data(&mut self.yk, &raw_ciphertext, algorithm, slot)
-            .map_err(|e| Error::from(e))?;
+            .map_err(Error::from)?;
         
         let padded_data = decrypted_zeroizing_vec.to_vec();
         let block_len = padded_data.len();
@@ -267,7 +267,7 @@ impl YubiKeyDevice {
         if padded_data[0] != 0x00 || padded_data[1] != 0x02 {
             return Err(Error::YubiKeyError(format!(
                 "Decryption error: Invalid PKCS#1 v1.5 padding header. Expected 00 02, got: {:02X} {:02X}",
-                padded_data.get(0).cloned().unwrap_or(0xFF),
+                padded_data.first().cloned().unwrap_or(0xFF),
                 padded_data.get(1).cloned().unwrap_or(0xFF)
             )));
         }

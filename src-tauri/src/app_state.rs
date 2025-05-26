@@ -32,7 +32,7 @@ impl Default for AppState {
 impl AppState {
     #[cfg(test)]
     pub fn new_test(password: &str) -> Self {
-        use std::{fs, path::Path};
+        use std::fs;
         use crate::encrypt::MasterPassword;
         // Initialize the empty state
         let mut state = Self::new_unauthenticated_test();

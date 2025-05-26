@@ -45,7 +45,7 @@ pub struct PublicKey {
 impl PublicKey {
     pub fn new(algorithm: EccAlgorithm, public_key: Vec<u8>) -> Self {
         Self {
-            algorithm: algorithm,
+            algorithm,
             bytes: public_key,
         }
     }
@@ -158,7 +158,7 @@ pub fn encrypt(
             let key = Key::<Aes256Gcm>::from_slice(key_bytes);
             let nonce = Nonce::from_slice(nonce_bytes);
 
-            let cipher = Aes256Gcm::new(&key);
+            let cipher = Aes256Gcm::new(key);
             let ciphertext = cipher
                 .encrypt(nonce, data)
                 .map_err(|_| "AES-GCM encryption failed")?;
@@ -188,7 +188,7 @@ pub fn encrypt(
             let key = Key::<Aes256Gcm>::from_slice(key_bytes);
             let nonce = Nonce::from_slice(nonce_bytes);
 
-            let cipher = Aes256Gcm::new(&key);
+            let cipher = Aes256Gcm::new(key);
             let ciphertext = cipher
                 .encrypt(nonce, data)
                 .map_err(|_| "AES-GCM encryption failed")?;
@@ -238,7 +238,7 @@ pub fn decrypt(
 
             let key = Key::<Aes256Gcm>::from_slice(key_bytes);
             let nonce = Nonce::from_slice(nonce_bytes);
-            let cipher = Aes256Gcm::new(&key);
+            let cipher = Aes256Gcm::new(key);
 
             cipher
                 .decrypt(nonce, ciphertext)
@@ -271,7 +271,7 @@ pub fn decrypt(
 
             let key = Key::<Aes256Gcm>::from_slice(key_bytes);
             let nonce = Nonce::from_slice(nonce_bytes);
-            let cipher = Aes256Gcm::new(&key);
+            let cipher = Aes256Gcm::new(key);
 
             cipher
                 .decrypt(nonce, ciphertext)
@@ -455,10 +455,7 @@ mod tests {
         ));
 
         // Test an unsupported algorithm
-        assert!(matches!(
-            from_piv_algorithm_id(PivAlgorithmId::Rsa2048),
-            Err(_)
-        ));
+        assert!(from_piv_algorithm_id(PivAlgorithmId::Rsa2048).is_err());
         // Example of another unsupported one, if it exists in piv_card::AlgorithmId
         // assert!(matches!(from_piv_algorithm_id(PivAlgorithmId::Des3), Err(_)));
     }
