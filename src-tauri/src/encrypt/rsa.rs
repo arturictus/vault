@@ -1,17 +1,16 @@
 use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding, DecodePublicKey},
     Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
-    signature::Verifier as RsaVerifier, // Keep this for verify method
-    signature::Signer, // Added Signer trait
-    signature::SignatureEncoding, // Added SignatureEncoding trait
+    signature::Verifier as RsaVerifier,
+    signature::Signer, 
+    signature::SignatureEncoding,
     sha2::Sha256,
-    // Removed Keypair, pkcs1v15::SigningKey as they are unused or replaced
     pkcs1v15::Signature as RsaSignature, 
 };
 use crate::encrypt::{Error, Result}; 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rand::rngs::OsRng;
-use crate::{AppState, MasterPassword, FileSystem};
+use crate::{AppState, MasterPassword};
 use std::fs;
 #[cfg(test)]
 use std::path::Path;
@@ -129,7 +128,7 @@ impl RsaKeyPair {
     }
 }
 
-impl TryFrom<&AppState> for RsaKeyPair { // Changed RSA to RsaKeyPair
+impl TryFrom<&AppState> for RsaKeyPair {
     type Error = crate::encrypt::Error;
 
     fn try_from(state: &AppState) -> Result<Self> {
@@ -140,7 +139,7 @@ impl TryFrom<&AppState> for RsaKeyPair { // Changed RSA to RsaKeyPair
         let encrypted_str = String::from_utf8_lossy(&encrypted_pk);
         let raw_pk = password_encryptor.decrypt(&encrypted_str)?;
         let pk = String::from_utf8_lossy(&raw_pk);
-        RsaKeyPair::from_string(&pk) // Changed RSA to RsaKeyPair
+        RsaKeyPair::from_string(&pk)
     }
 }
 
@@ -160,12 +159,12 @@ mod tests {
     #[test]
     fn test_try_from_trait() {
         let state = state();
-        assert!((RsaKeyPair::try_from(&state).is_ok())); // Changed RSA to RsaKeyPair
+        assert!((RsaKeyPair::try_from(&state).is_ok()));
     }
 
     #[test]
     fn test_encryption_decryption() {
-        let encryptor = RsaKeyPair::new().unwrap(); // Changed RSA to RsaKeyPair
+        let encryptor = RsaKeyPair::new().unwrap();
         let original = "test secret";
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = encryptor.decrypt_string(&encrypted).unwrap();
@@ -177,10 +176,10 @@ mod tests {
         let dir = tempdir().unwrap();
         let key_path = dir.path().join("private_key.pem");
 
-        let encryptor = RsaKeyPair::new().unwrap(); // Changed RSA to RsaKeyPair
+        let encryptor = RsaKeyPair::new().unwrap();
         encryptor.save_to_file(&key_path).unwrap();
 
-        let loaded_encryptor = RsaKeyPair::from_file(&key_path).unwrap(); // Changed RSA to RsaKeyPair
+        let loaded_encryptor = RsaKeyPair::from_file(&key_path).unwrap();
         let original = "test secret";
         let encrypted = encryptor.encrypt_string(original).unwrap();
         let decrypted = loaded_encryptor.decrypt_string(&encrypted).unwrap();
@@ -189,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_public_key_to_pem() {
-        let encryptor = RsaKeyPair::new().unwrap(); // Changed RSA to RsaKeyPair
+        let encryptor = RsaKeyPair::new().unwrap();
         let public_key_pem = encryptor.public_key_pem().unwrap();
         assert!(public_key_pem.starts_with("-----BEGIN PUBLIC KEY-----"));
         assert!(public_key_pem.ends_with("-----END PUBLIC KEY-----\n"));
@@ -197,6 +196,7 @@ mod tests {
 
     #[test]
     fn test_public_key_verify() {
+        // TODO: implement sign and verify in the main module
         // 1. Generate a key pair
         let key_pair = RsaKeyPair::new().unwrap();
         let public_key_pem = key_pair.public_key_pem().unwrap();
@@ -208,7 +208,7 @@ mod tests {
         // 3. Sign data using the private key (simulating YubiKey signing for test purposes)
         let data_to_sign = b"hello world";
         let private_key_for_signing = RsaPrivateKey::from_pkcs8_pem(&private_key_pem).unwrap();
-        let signing_key = rsa::pkcs1v15::SigningKey::<Sha256>::new_with_prefix(private_key_for_signing);
+        let signing_key = rsa::pkcs1v15::SigningKey::<Sha256>::new(private_key_for_signing);
         let signature: RsaSignature = signing_key.sign(data_to_sign);
         
         // 4. Verify with PublicKey
