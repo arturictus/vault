@@ -1,9 +1,11 @@
+# cargo-features = ["edition2024"]
 [package]
 name = "vault"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
-edition = "2021"
+edition = "2024"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -33,6 +35,26 @@ uuid = "1.13.1"
 ring = "0.16"
 aes-gcm = "0.10"
 rust-crypto = "0.2.36"
+# YubiKey dependencies with macOS compatibility settings
+yubikey = { version = "0.8.0", features= ["untested"] }
+p256 = { version = "0.13", features = ["ecdsa", "ecdh"] }
+p384 = { version = "0.13", features = ["ecdsa", "ecdh"] }
+elliptic-curve = { version = "0.13", features = ["sec1", "ecdh"] }
+sha2 = "0.10"
+hkdf = "0.12"
+pinentry = "0.5.0"
+secrecy = "0.10.3"
+signature = { version = "2", features = ["std"] }
+
+# Exclude problematic Linux-specific crates on macOS
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+pkcs11 = "0.5.0"
+
+# Required for YubiKey crypto operations
+ring = "0.16.20"
+pem = "3.0"
 
 [dev-dependencies]
 tempfile = "3.10.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serial_test = "2.0.0"

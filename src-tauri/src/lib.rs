@@ -5,6 +5,7 @@ mod secrets;
 mod error;
 mod app_state;
 mod ipc;
+pub mod yubikey;
 use tauri_plugin_fs::FsExt;
 use tauri::Manager;
 use std::sync::Mutex;
@@ -14,6 +15,8 @@ pub use error::{Error, Result};
 pub use app_state::{AppState, TauriState};
 pub use encrypt::MasterPassword;
 use ipc::*;
+
+pub struct W<T>(pub T);
 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -39,7 +42,10 @@ pub fn run() {
             get_secret,
             save_master_password,
             verify_master_password,
-            log_out
+            log_out,
+            list_yubikeys,
+            encrypt_with_yubikey,
+            save_yubikey_settings,
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())

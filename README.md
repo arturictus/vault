@@ -10,6 +10,7 @@ Secret Vault is a secure, lightweight desktop application built using the **Taur
 
 - **Local Storage**: All secrets are stored locally on your device, ensuring that your data never leaves your machine.
 - **Strong Encryption**: Secrets are encrypted using industry-standard encryption methods before being saved to disk.
+- **YubiKey Support**: Use YubiKeys for hardware-based encryption and authentication, adding an extra layer of security.
 - **Data Ownership**: You retain full ownership of your data. No third-party servers or cloud storage are involved.
 - **Cross-Platform**: Built with Tauri, the application runs seamlessly on Windows, macOS, and Linux.
 - **Simple & Intuitive UI**: A clean and user-friendly interface makes it easy to manage your secrets.
@@ -17,9 +18,10 @@ Secret Vault is a secure, lightweight desktop application built using the **Taur
 ## How It Works
 
 1. **Add Secrets**: Enter your sensitive information (e.g., passwords, API keys, notes) into the application.
-2. **Encryption**: The application encrypts your data using strong encryption algorithms before saving it to a local file.
+2. **Encryption**: The application encrypts your data using strong encryption algorithms before saving it to a local file. Optionally, use a YubiKey for hardware-based encryption.
 3. **Secure Storage**: Encrypted data is stored in a local file on your device, accessible only through the application.
-4. **Decryption on Demand**: When you need to access your secrets, the application decrypts the data securely and displays it to you.
+4. **Authentication**: Access your vault using your master password or authenticate with a YubiKey for added security.
+5. **Decryption on Demand**: When you need to access your secrets, the application decrypts the data securely and displays it to you.
 
 ## Why Secret Vault?
 
@@ -33,7 +35,7 @@ Secret Vault is a secure, lightweight desktop application built using the **Taur
 - [ ] Improve UI
 - [ ] Private key backup
 - [ ] Password recovery
-- [ ] Yubikeys for encryption and or authentication
+- [x] Yubikeys for encryption and authentication
 - [ ] Share functionally, using receiver public key
 - [ ] Multi Vault, different security management for each vault
 
@@ -68,3 +70,30 @@ cargo install
 ```bash
 bun tauri dev
 ```
+
+## YubiKey Functionality
+
+### Features
+
+- **YubiKey Detection**: Automatically detect and list connected YubiKeys.
+- **Hardware-Based Authentication**: Use your YubiKey as a second factor for authentication.
+- **Encryption**: Utilize your YubiKey's PIV capability to encrypt sensitive data.
+
+### Testing YubiKey Integration
+
+A command-line tool is included for testing YubiKey functionality:
+
+```bash
+cd src-tauri
+cargo run --bin yubikey_tool
+```
+
+This tool allows you to:
+1. List connected YubiKeys
+2. Generate challenge and authenticate with a YubiKey
+3. Encrypt text using YubiKey
+
+### Requirements
+
+- At least one YubiKey with PIV capability
+- YubiKey Manager (optional, for managing YubiKey PIV certificates and keys)

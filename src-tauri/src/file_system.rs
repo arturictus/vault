@@ -48,6 +48,10 @@ impl FileSystem {
         self.root().join("rsa_master_pk.enc")
     }
 
+    pub fn yubikey_settings(&self) -> PathBuf {
+        self.root().join("yubikey_settings.json")
+    }
+
     pub fn master_pub(&self) -> PathBuf {
         self.root().join("rsa_master_pub")
     }

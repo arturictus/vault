@@ -1,10 +1,11 @@
 pub mod error;
 mod rsa;
 mod aes;
+mod ecc;
 mod master_password;
 pub use error::{Error, Result};
 pub use aes::AES;
-pub use rsa::RSA;
+pub use rsa::{RsaKeyPair, PublicKey};
 pub use master_password::MasterPassword;
 
 // TODO: Implement Encrypt trait
