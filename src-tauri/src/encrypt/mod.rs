@@ -1,6 +1,7 @@
 pub mod error;
 mod rsa;
 mod aes;
+mod ecc;
 mod master_password;
 pub use error::{Error, Result};
 pub use aes::AES;
