@@ -3,6 +3,7 @@ mod rsa;
 mod aes;
 mod ecc;
 mod master_password;
+mod password_manager;
 pub use error::{Error, Result};
 pub use aes::AES;
 pub use rsa::{RsaKeyPair, PublicKey};
