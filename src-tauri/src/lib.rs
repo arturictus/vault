@@ -14,6 +14,7 @@ pub use file_system::FileSystem;
 pub use error::{Error, Result};
 pub use app_state::{AppState, TauriState};
 pub use encrypt::MasterPassword;
+pub use encrypt::PasswordManager;
 use ipc::*;
 
 pub struct W<T>(pub T);

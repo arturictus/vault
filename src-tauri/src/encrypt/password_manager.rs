@@ -11,12 +11,12 @@ use rand::{RngCore};
 use base64::{engine::general_purpose, Engine as _};
 use std::error::Error;
 
-struct PasswordManager {
+pub struct PasswordManager {
     master_password: String,
 }
 
 impl PasswordManager {
-    fn new(master_password: &str) -> Self {
+    pub fn new(master_password: &str) -> Self {
         PasswordManager {
             master_password: master_password.to_string(),
         }
@@ -68,7 +68,7 @@ impl PasswordManager {
         Ok(String::from_utf8(plaintext)?)
     }
 
-    fn store_password(
+    pub fn store_password(
         &self,
         service: &str,
         password: &str,
@@ -110,8 +110,8 @@ impl PasswordManager {
     }
 }
 
-#[derive(Debug)]
-struct StoredData {
+#[derive(Debug, serde::Serialize)]
+pub struct StoredData {
     service: String,
     salt: String,
     nonce: String,
