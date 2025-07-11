@@ -1,91 +1,104 @@
 
+//! Error types for the secure session management system
+
 use thiserror::Error;
-use std::sync::PoisonError;
-use std::sync::MutexGuard;
-pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Error, Debug, serde::Serialize)]
-pub enum Error {
-  TauriInit(String),
-  Secrets(String),
-  Custom(String),
-  Encryption(String),
-  Io(String),
-  StateLock(String),
-  MasterPassword(String),
-  YubiKeyError(String),
-}
-
-impl core::fmt::Display for Error {
-	fn fmt(
-		&self,
-		fmt: &mut core::fmt::Formatter,
-	) -> core::result::Result<(), core::fmt::Error> {
-		write!(fmt, "{self:?}")
-	}
-}
-
-
-impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
-    fn from(_: PoisonError<MutexGuard<'_, T>>) -> Self {
-        Error::TauriInit("Mutex lock poisoned".to_string())
-    }
-}
-
-impl From<String> for Error {
-    fn from(e: String) -> Self {
-        Error::Custom(e)
-    }
-}
-
-impl From<crate::encrypt::Error> for Error {
-    fn from(e: crate::encrypt::Error) -> Self {
-        Error::Encryption(e.to_string())
-    }
+/// Main error type for session operations
+#[derive(Debug, Error)]
+pub enum SessionError {
+    #[error("Session not found: {session_id}")]
+    SessionNotFound { session_id: String },
     
+    #[error("Session expired: {session_id}")]
+    SessionExpired { session_id: String },
+    
+    #[error("Invalid session token")]
+    InvalidToken,
+    
+    #[error("Session creation failed: {reason}")]
+    CreationFailed { reason: String },
+    
+    #[error("Session validation failed: {reason}")]
+    ValidationFailed { reason: String },
+    
+    #[error("Cryptographic error: {0}")]
+    CryptoError(#[from] CryptoError),
+    
+    #[error("Authentication error: {0}")]
+    AuthError(#[from] AuthError),
+    
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] serde_json::Error),
+    
+    #[error("Internal error: {0}")]
+    Internal(#[from] anyhow::Error),
 }
 
-impl From<crate::secrets::Error> for Error {
-    fn from(e: crate::secrets::Error) -> Self {
-        Error::Custom(e.to_string())
-    }
+/// Authentication-specific errors
+#[derive(Debug, Error)]
+pub enum AuthError {
+    #[error("Invalid credentials")]
+    InvalidCredentials,
     
+    #[error("User not found: {username}")]
+    UserNotFound { username: String },
+    
+    #[error("Password verification failed")]
+    PasswordVerificationFailed,
+    
+    #[error("Account locked: {username}")]
+    AccountLocked { username: String },
+    
+    #[error("Too many failed attempts")]
+    TooManyAttempts,
+    
+    #[error("Cryptographic error: {0}")]
+    CryptoError(#[from] CryptoError),
 }
 
-// // --- RSA errors
-// impl From<rsa::errors::Error> for Error {
-//     fn from(e: rsa::errors::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
-
-// impl From<base64::DecodeError> for Error {
-//     fn from(e: base64::DecodeError) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
-
-// impl From<rsa::pkcs8::Error> for Error {
-//     fn from(e: rsa::pkcs8::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
-// impl From<std::io::Error> for Error {
-//     fn from(e: std::io::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
+/// Cryptographic operation errors
+#[derive(Debug, Error)]
+pub enum CryptoError {
+    #[error("Key derivation failed: {reason}")]
+    KeyDerivationFailed { reason: String },
     
-// }
+    #[error("Encryption failed: {reason}")]
+    EncryptionFailed { reason: String },
+    
+    #[error("Decryption failed: {reason}")]
+    DecryptionFailed { reason: String },
+    
+    #[error("Invalid key length: expected {expected}, got {actual}")]
+    InvalidKeyLength { expected: usize, actual: usize },
+    
+    #[error("Random number generation failed")]
+    RandomGenerationFailed,
+    
+    #[error("Hash verification failed")]
+    HashVerificationFailed,
+    
+    #[error("Argon2 error: {0}")]
+    Argon2Error(String),
+    
+    #[error("AES-GCM error: {0}")]
+    AesGcmError(String),
+}
 
-// impl From<std::string::FromUtf8Error> for Error {
-//     fn from(e: std::string::FromUtf8Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
+/// Security-related errors
+#[derive(Debug, Error)]
+pub enum SecurityError {
+    #[error("Memory protection failed: {reason}")]
+    MemoryProtectionFailed { reason: String },
+    
+    #[error("Secure wipe failed")]
+    SecureWipeFailed,
+    
+    #[error("Access denied: {reason}")]
+    AccessDenied { reason: String },
+}
 
-// impl From<rsa::pkcs8::spki::Error> for Error {
-//     fn from(e: rsa::pkcs8::spki::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
-// END RSA
+/// Result type aliases for convenience
+pub type SessionResult<T> = Result<T, SessionError>;
+pub type AuthResult<T> = Result<T, AuthError>;
+pub type CryptoResult<T> = Result<T, CryptoError>;
+pub type SecurityResult<T> = Result<T, SecurityError>;
