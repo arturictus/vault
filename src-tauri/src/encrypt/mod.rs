@@ -3,10 +3,12 @@ mod rsa;
 mod aes;
 mod ecc;
 mod master_password;
+mod password_manager;
 pub use error::{Error, Result};
 pub use aes::AES;
 pub use rsa::{RsaKeyPair, PublicKey};
 pub use master_password::MasterPassword;
+pub use password_manager::PasswordManager;
 
 // TODO: Implement Encrypt trait
 // pub trait Encrypt {
