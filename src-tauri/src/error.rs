@@ -1,7 +1,59 @@
 
-//! Error types for the secure session management system
+//! Error types for both the original application and the secure session management system
 
 use thiserror::Error;
+use std::sync::PoisonError;
+use std::sync::MutexGuard;
+
+// Original application error types
+pub type Result<T> = core::result::Result<T, Error>;
+
+#[derive(Error, Debug, serde::Serialize)]
+pub enum Error {
+  TauriInit(String),
+  Secrets(String),
+  Custom(String),
+  Encryption(String),
+  Io(String),
+  StateLock(String),
+  MasterPassword(String),
+  YubiKeyError(String),
+}
+
+impl core::fmt::Display for Error {
+	fn fmt(
+		&self,
+		fmt: &mut core::fmt::Formatter,
+	) -> core::result::Result<(), core::fmt::Error> {
+		write!(fmt, "{self:?}")
+	}
+}
+
+impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
+    fn from(_: PoisonError<MutexGuard<'_, T>>) -> Self {
+        Error::TauriInit("Mutex lock poisoned".to_string())
+    }
+}
+
+impl From<String> for Error {
+    fn from(e: String) -> Self {
+        Error::Custom(e)
+    }
+}
+
+impl From<crate::encrypt::Error> for Error {
+    fn from(e: crate::encrypt::Error) -> Self {
+        Error::Encryption(e.to_string())
+    }
+}
+
+impl From<crate::secrets::Error> for Error {
+    fn from(e: crate::secrets::Error) -> Self {
+        Error::Custom(e.to_string())
+    }
+}
+
+// New secure session management error types
 
 /// Main error type for session operations
 #[derive(Debug, Error)]
@@ -97,8 +149,8 @@ pub enum SecurityError {
     AccessDenied { reason: String },
 }
 
-/// Result type aliases for convenience
-pub type SessionResult<T> = Result<T, SessionError>;
-pub type AuthResult<T> = Result<T, AuthError>;
-pub type CryptoResult<T> = Result<T, CryptoError>;
-pub type SecurityResult<T> = Result<T, SecurityError>;
+// Result type aliases for convenience
+pub type SessionResult<T> = core::result::Result<T, SessionError>;
+pub type AuthResult<T> = core::result::Result<T, AuthError>;
+pub type CryptoResult<T> = core::result::Result<T, CryptoError>;
+pub type SecurityResult<T> = core::result::Result<T, SecurityError>;

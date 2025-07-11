@@ -1,0 +1,36 @@
+
+[package]
+name = "vault-secure-session"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Security dependencies
+argon2 = "0.5.3"
+secrecy = { version = "0.10.3", features = ["serde"] }
+zeroize = "1.6"
+
+# Session and crypto dependencies
+uuid = { version = "1.0", features = ["v4", "serde"] }
+rand = "0.8"
+aes-gcm = "0.10"
+base64 = "0.21"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async utilities
+dashmap = "5.5"
+parking_lot = "0.12"
+
+[dev-dependencies]
+tokio-test = "0.4"
