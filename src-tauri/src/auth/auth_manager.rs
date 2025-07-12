@@ -1,4 +1,3 @@
-
 //! Improved authentication system with secure memory protection
 
 use std::collections::HashMap;
@@ -8,7 +7,7 @@ use chrono::{DateTime, Utc, Duration};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::crypto::CryptoManager;
+use super::crypto::CryptoManager;
 use crate::security::{SecureString, SecurityConfig};
 use crate::error::{AuthError, AuthResult};
 

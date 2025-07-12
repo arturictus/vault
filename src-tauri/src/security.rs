@@ -1,23 +1,21 @@
-
 //! Security utilities and memory protection
 
-use secrecy::{SecretBox, ExposeSecret, CloneableSecret, SerializableSecret};
+use secrecy::{SecretBox, ExposeSecret};
 use zeroize::Zeroize;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use crate::error::SecurityResult;
 
 /// Secure memory wrapper that ensures sensitive data is properly protected
-#[derive(Clone)]
-pub struct SecureMemory<T: Zeroize + Clone> {
+pub struct SecureMemory<T: Zeroize> {
     inner: SecretBox<T>,
 }
 
-impl<T: Zeroize + Clone> SecureMemory<T> {
+impl<T: Zeroize> SecureMemory<T> {
     /// Create a new secure memory instance
     pub fn new(value: T) -> Self {
         Self {
-            inner: SecretBox::new(value),
+            inner: SecretBox::new(Box::new(value)),
         }
     }
     
@@ -25,14 +23,9 @@ impl<T: Zeroize + Clone> SecureMemory<T> {
     pub fn expose<R>(&self, f: impl FnOnce(&T) -> R) -> R {
         f(self.inner.expose_secret())
     }
-    
-    /// Clone the inner value (use sparingly)
-    pub fn clone_inner(&self) -> T {
-        self.inner.expose_secret().clone()
-    }
 }
 
-impl<T: Zeroize + Clone + fmt::Debug> fmt::Debug for SecureMemory<T> {
+impl<T: Zeroize + fmt::Debug> fmt::Debug for SecureMemory<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SecureMemory")
             .field("inner", &"[REDACTED]")
@@ -212,5 +205,18 @@ mod tests {
         assert!(SecurityUtils::constant_time_eq(a, b));
         assert!(!SecurityUtils::constant_time_eq(a, c));
         assert!(!SecurityUtils::constant_time_eq(a, b"hell"));
+    }
+}
+
+// Implement Clone for specific types that support it
+impl Clone for SecureString {
+    fn clone(&self) -> Self {
+        self.expose(|s| Self::new(s.clone()))
+    }
+}
+
+impl Clone for SecureBytes {
+    fn clone(&self) -> Self {
+        self.expose(|bytes| Self::new(bytes.clone()))
     }
 }

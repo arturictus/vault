@@ -1,4 +1,3 @@
-
 //! Error types for both the original application and the secure session management system
 
 use thiserror::Error;
@@ -154,3 +153,16 @@ pub type SessionResult<T> = core::result::Result<T, SessionError>;
 pub type AuthResult<T> = core::result::Result<T, AuthError>;
 pub type CryptoResult<T> = core::result::Result<T, CryptoError>;
 pub type SecurityResult<T> = core::result::Result<T, SecurityError>;
+
+// From implementations for error conversions
+impl From<argon2::password_hash::Error> for CryptoError {
+    fn from(err: argon2::password_hash::Error) -> Self {
+        CryptoError::Argon2Error(err.to_string())
+    }
+}
+
+impl From<argon2::Error> for CryptoError {
+    fn from(err: argon2::Error) -> Self {
+        CryptoError::Argon2Error(err.to_string())
+    }
+}

@@ -1,4 +1,3 @@
-
 //! Core session management with secure tokens and timeouts
 
 use std::sync::Arc;
@@ -7,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use dashmap::DashMap;
 
-use crate::auth::{AuthManager, AuthenticationResult};
-use crate::crypto::{CryptoManager, EncryptedData};
+use super::auth_manager::{AuthManager, AuthenticationResult};
+use super::crypto::{CryptoManager, EncryptedData};
 use crate::security::{SecureBytes, SecurityConfig, SecurityUtils};
 use crate::error::{SessionError, SessionResult};
 
@@ -366,7 +365,7 @@ impl SessionMiddleware {
         ip_address: Option<String>,
         user_agent: Option<String>,
     ) -> SessionResult<SessionToken> {
-        use crate::auth::Credentials;
+        use super::auth_manager::Credentials;
         
         let credentials = Credentials::new(username, password);
         let auth_result = self.auth_manager.authenticate(credentials).await
@@ -403,7 +402,7 @@ impl SessionMiddleware {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::auth::AuthManager;
+    use super::auth_manager::AuthManager;
     use crate::security::{SecurityConfig, SecureString};
     
     #[tokio::test]

@@ -1,4 +1,3 @@
-
 //! Enhanced cryptographic operations with Argon2
 
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
@@ -65,7 +64,7 @@ impl CryptoManager {
     /// Verify a password against its hash
     pub fn verify_password(&self, password: &SecureString, hash: &str) -> CryptoResult<bool> {
         let parsed_hash = PasswordHash::new(hash)
-            .map_err(|e| CryptoError::HashVerificationFailed)?;
+            .map_err(|_| CryptoError::HashVerificationFailed)?;
         
         let result = password.expose(|pwd| {
             self.argon2.verify_password(pwd.as_bytes(), &parsed_hash)

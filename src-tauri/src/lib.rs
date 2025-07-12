@@ -15,9 +15,7 @@ pub mod yubikey;
 
 // New secure session management modules
 pub mod auth;
-pub mod crypto;
 pub mod security;
-pub mod session;
 pub mod error;
 
 // Original imports and dependencies
@@ -33,9 +31,6 @@ use ipc::*;
 
 // New secure session management exports
 pub use auth::*;
-pub use crypto::*;
-pub use security::*;
-pub use session::*;
 
 // Re-export error types from both old and new systems
 pub use error::{Error, Result}; // Original error types
@@ -44,10 +39,11 @@ pub struct W<T>(pub T);
 
 /// Re-export commonly used types for secure session management
 pub mod prelude {
-    pub use crate::{
-        SessionManager, SessionToken, AuthManager, SecureMemory,
-        CryptoManager, SessionError, AuthError, CryptoError,
+    pub use crate::auth::{
+        SessionManager, SessionToken, AuthManager, CryptoManager,
     };
+    pub use crate::security::SecureMemory;
+    pub use crate::error::{SessionError, AuthError, CryptoError};
     pub use secrecy::{SecretBox, ExposeSecret};
     pub use uuid::Uuid;
 }
