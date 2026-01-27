@@ -173,10 +173,17 @@ impl SessionManager {
 
         // Serialize and encrypt session data
         let serialized = serde_json::to_vec(&session_data)?;
-        let encrypted = self
-            .crypto
-            .encrypt(&self.encryption_key, &serialized)
-            .map_err(SessionError::CryptoError)?;
+
+        let crypto = self.crypto.clone();
+        let key = self.encryption_key.clone();
+
+        let encrypted = tokio::task::spawn_blocking(move || {
+            crypto
+                .encrypt(&key, &serialized)
+                .map_err(SessionError::CryptoError)
+        })
+        .await
+        .map_err(|e| SessionError::Internal(e.into()))??;
 
         // Generate session token
         let token = SessionToken::new()?;
@@ -207,11 +214,18 @@ impl SessionManager {
                     session_id: token.token.clone(),
                 })?;
 
-        // Decrypt session data
-        let decrypted = self
-            .crypto
-            .decrypt(&self.encryption_key, &encrypted_session.encrypted_data)
-            .map_err(SessionError::CryptoError)?;
+        // Decrypt session data in blocking task
+        let crypto = self.crypto.clone();
+        let key = self.encryption_key.clone();
+        let encrypted_data = encrypted_session.encrypted_data.clone();
+
+        let decrypted = tokio::task::spawn_blocking(move || {
+            crypto
+                .decrypt(&key, &encrypted_data)
+                .map_err(SessionError::CryptoError)
+        })
+        .await
+        .map_err(|e| SessionError::Internal(e.into()))??;
 
         let mut session_data: SessionData = serde_json::from_slice(&decrypted)?;
 
@@ -228,10 +242,17 @@ impl SessionManager {
 
         // Re-encrypt and store updated session data
         let serialized = serde_json::to_vec(&session_data)?;
-        let encrypted = self
-            .crypto
-            .encrypt(&self.encryption_key, &serialized)
-            .map_err(SessionError::CryptoError)?;
+
+        let crypto = self.crypto.clone();
+        let key = self.encryption_key.clone();
+
+        let encrypted = tokio::task::spawn_blocking(move || {
+            crypto
+                .encrypt(&key, &serialized)
+                .map_err(SessionError::CryptoError)
+        })
+        .await
+        .map_err(|e| SessionError::Internal(e.into()))??;
 
         let updated_session = EncryptedSession {
             encrypted_data: encrypted,
@@ -252,10 +273,17 @@ impl SessionManager {
 
         // Re-encrypt and store updated session data
         let serialized = serde_json::to_vec(&session_data)?;
-        let encrypted = self
-            .crypto
-            .encrypt(&self.encryption_key, &serialized)
-            .map_err(SessionError::CryptoError)?;
+
+        let crypto = self.crypto.clone();
+        let key = self.encryption_key.clone();
+
+        let encrypted = tokio::task::spawn_blocking(move || {
+            crypto
+                .encrypt(&key, &serialized)
+                .map_err(SessionError::CryptoError)
+        })
+        .await
+        .map_err(|e| SessionError::Internal(e.into()))??;
 
         let updated_session = EncryptedSession {
             encrypted_data: encrypted,

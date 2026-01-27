@@ -19,6 +19,7 @@
     let { form, errors, enhance, submitting, constraints } = $props();
 
     async function handleSavePassword() {
+        toaster.info("Creating account..."); // Immediate feedback
         try {
             await appState.register($form.username, $form.password);
             toaster.success("Account created successfully!");
@@ -39,7 +40,7 @@
         Create Account
     </h2>
 
-    <form use:enhance on:submit|preventDefault={handleSavePassword}>
+    <form on:submit|preventDefault={handleSavePassword}>
         <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
             <div class="sm:col-span-2">
                 <Label for="username" class="mb-2">Username</Label>
