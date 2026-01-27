@@ -4,7 +4,7 @@ name = "vault"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
-edition = "2024"
+edition = "2021"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -22,17 +22,17 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 thiserror = "2.0.11"
 rsa = "0.9"
 rand = "0.8"
 base64 = "0.21"
-tempfile = "3.8.1"
+tempfile = "3.10.0"
 tauri-plugin-fs = "2"
 dirs = "6.0.0"
-uuid = "1.13.1"
-ring = "0.16"
+uuid = { version = "1.13.1", features = ["v4", "serde"] }
+ring = "0.16.20"
 aes-gcm = "0.10"
 rust-crypto = "0.2.36"
 # YubiKey dependencies with macOS compatibility settings
@@ -43,18 +43,34 @@ elliptic-curve = { version = "0.13", features = ["sec1", "ecdh"] }
 sha2 = "0.10"
 hkdf = "0.12"
 pinentry = "0.5.0"
-secrecy = "0.10.3"
+secrecy = { version = "0.10.3", features = ["serde"] }
 signature = { version = "2", features = ["std"] }
+tokio = { version = "1.0", features = ["full"] }
+
+# Security dependencies
+argon2 = "0.5.3"
+zeroize = "1.6"
+
+# Error handling
+anyhow = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async utilities
+dashmap = "5.5"
+parking_lot = "0.12"
+
 
 # Exclude problematic Linux-specific crates on macOS
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 pkcs11 = "0.5.0"
 
 # Required for YubiKey crypto operations
-ring = "0.16.20"
 pem = "3.0"
 
 [dev-dependencies]
+tokio-test = "0.4"
 tempfile = "3.10.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serial_test = "2.0.0"

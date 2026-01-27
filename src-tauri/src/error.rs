@@ -1,30 +1,31 @@
+//! Error types for both the original application and the secure session management system
 
-use thiserror::Error;
-use std::sync::PoisonError;
 use std::sync::MutexGuard;
+use std::sync::PoisonError;
+use thiserror::Error;
+
+// Original application error types
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Error, Debug, serde::Serialize)]
 pub enum Error {
-  TauriInit(String),
-  Secrets(String),
-  Custom(String),
-  Encryption(String),
-  Io(String),
-  StateLock(String),
-  MasterPassword(String),
-  YubiKeyError(String),
+    TauriInit(String),
+    Secrets(String),
+    Custom(String),
+    Encryption(String),
+    Io(String),
+    StateLock(String),
+    MasterPassword(String),
+    YubiKeyError(String),
+    Auth(String),
+    Session(String),
 }
 
 impl core::fmt::Display for Error {
-	fn fmt(
-		&self,
-		fmt: &mut core::fmt::Formatter,
-	) -> core::result::Result<(), core::fmt::Error> {
-		write!(fmt, "{self:?}")
-	}
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+        write!(fmt, "{self:?}")
+    }
 }
-
 
 impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
     fn from(_: PoisonError<MutexGuard<'_, T>>) -> Self {
@@ -42,50 +43,143 @@ impl From<crate::encrypt::Error> for Error {
     fn from(e: crate::encrypt::Error) -> Self {
         Error::Encryption(e.to_string())
     }
-    
 }
 
 impl From<crate::secrets::Error> for Error {
     fn from(e: crate::secrets::Error) -> Self {
         Error::Custom(e.to_string())
     }
-    
 }
 
-// // --- RSA errors
-// impl From<rsa::errors::Error> for Error {
-//     fn from(e: rsa::errors::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
+impl From<SessionError> for Error {
+    fn from(e: SessionError) -> Self {
+        Error::Session(e.to_string())
+    }
+}
 
-// impl From<base64::DecodeError> for Error {
-//     fn from(e: base64::DecodeError) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
+impl From<AuthError> for Error {
+    fn from(e: AuthError) -> Self {
+        Error::Auth(e.to_string())
+    }
+}
 
-// impl From<rsa::pkcs8::Error> for Error {
-//     fn from(e: rsa::pkcs8::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
-// impl From<std::io::Error> for Error {
-//     fn from(e: std::io::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-    
-// }
+// New secure session management error types
 
-// impl From<std::string::FromUtf8Error> for Error {
-//     fn from(e: std::string::FromUtf8Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
+/// Main error type for session operations
+#[derive(Debug, Error)]
+pub enum SessionError {
+    #[error("Session not found: {session_id}")]
+    SessionNotFound { session_id: String },
 
-// impl From<rsa::pkcs8::spki::Error> for Error {
-//     fn from(e: rsa::pkcs8::spki::Error) -> Self {
-//         Error::Encryption(e.to_string())
-//     }
-// }
-// END RSA
+    #[error("Session expired: {session_id}")]
+    SessionExpired { session_id: String },
+
+    #[error("Invalid session token")]
+    InvalidToken,
+
+    #[error("Session creation failed: {reason}")]
+    CreationFailed { reason: String },
+
+    #[error("Session validation failed: {reason}")]
+    ValidationFailed { reason: String },
+
+    #[error("Cryptographic error: {0}")]
+    CryptoError(#[from] CryptoError),
+
+    #[error("Authentication error: {0}")]
+    AuthError(#[from] AuthError),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] serde_json::Error),
+
+    #[error("Internal error: {0}")]
+    Internal(#[from] anyhow::Error),
+}
+
+/// Authentication-specific errors
+#[derive(Debug, Error)]
+pub enum AuthError {
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+
+    #[error("User not found: {username}")]
+    UserNotFound { username: String },
+
+    #[error("Password verification failed")]
+    PasswordVerificationFailed,
+
+    #[error("Account locked: {username}")]
+    AccountLocked { username: String },
+
+    #[error("Too many failed attempts")]
+    TooManyAttempts,
+
+    #[error("User already exists: {username}")]
+    UserAlreadyExists { username: String },
+
+    #[error("Cryptographic error: {0}")]
+    CryptoError(#[from] CryptoError),
+}
+
+/// Cryptographic operation errors
+#[derive(Debug, Error)]
+pub enum CryptoError {
+    #[error("Key derivation failed: {reason}")]
+    KeyDerivationFailed { reason: String },
+
+    #[error("Encryption failed: {reason}")]
+    EncryptionFailed { reason: String },
+
+    #[error("Decryption failed: {reason}")]
+    DecryptionFailed { reason: String },
+
+    #[error("Invalid key length: expected {expected}, got {actual}")]
+    InvalidKeyLength { expected: usize, actual: usize },
+
+    #[error("Random number generation failed")]
+    RandomGenerationFailed,
+
+    #[error("Hash verification failed")]
+    HashVerificationFailed,
+
+    #[error("Argon2 error: {0}")]
+    Argon2Error(String),
+
+    #[error("AES-GCM error: {0}")]
+    AesGcmError(String),
+
+    #[error("Internal error: {0}")]
+    Internal(#[from] anyhow::Error),
+}
+
+/// Security-related errors
+#[derive(Debug, Error)]
+pub enum SecurityError {
+    #[error("Memory protection failed: {reason}")]
+    MemoryProtectionFailed { reason: String },
+
+    #[error("Secure wipe failed")]
+    SecureWipeFailed,
+
+    #[error("Access denied: {reason}")]
+    AccessDenied { reason: String },
+}
+
+// Result type aliases for convenience
+pub type SessionResult<T> = core::result::Result<T, SessionError>;
+pub type AuthResult<T> = core::result::Result<T, AuthError>;
+pub type CryptoResult<T> = core::result::Result<T, CryptoError>;
+pub type SecurityResult<T> = core::result::Result<T, SecurityError>;
+
+// From implementations for error conversions
+impl From<argon2::password_hash::Error> for CryptoError {
+    fn from(err: argon2::password_hash::Error) -> Self {
+        CryptoError::Argon2Error(err.to_string())
+    }
+}
+
+impl From<argon2::Error> for CryptoError {
+    fn from(err: argon2::Error) -> Self {
+        CryptoError::Argon2Error(err.to_string())
+    }
+}

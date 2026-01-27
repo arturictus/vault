@@ -13,10 +13,8 @@ impl Default for FileSystem {
 }
 
 impl FileSystem {
-
-    #[cfg(test)] 
+    #[cfg(test)]
     pub fn new_test(temp_dir: PathBuf) -> Self {
-
         let inst = Self {
             root: temp_dir.join(".vault"),
         };
@@ -48,6 +46,10 @@ impl FileSystem {
         self.root().join("rsa_master_pk.enc")
     }
 
+    pub fn users_file(&self) -> PathBuf {
+        self.root().join("users.json")
+    }
+
     pub fn yubikey_settings(&self) -> PathBuf {
         self.root().join("yubikey_settings.json")
     }
@@ -62,7 +64,8 @@ impl FileSystem {
     }
 
     pub fn secret_path(&self, vault_name: &str, secret_id: &str) -> PathBuf {
-        self.vault_folder(vault_name).join(format!("{}.enc", secret_id))
+        self.vault_folder(vault_name)
+            .join(format!("{}.enc", secret_id))
     }
 
     // TODO: Change Result to crate::Error::TauriInit
@@ -76,7 +79,6 @@ impl FileSystem {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {

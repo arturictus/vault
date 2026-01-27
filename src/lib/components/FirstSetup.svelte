@@ -1,40 +1,68 @@
 <script lang="ts">
     import { Section } from "flowbite-svelte-blocks";
-    import { Card, Label, Input, Button, Select, Textarea, A, Alert } from "flowbite-svelte";
+    import {
+        Card,
+        Label,
+        Input,
+        Button,
+        Select,
+        Textarea,
+        A,
+        Alert,
+    } from "flowbite-svelte";
     import { goto } from "$app/navigation";
     import { invoke } from "@tauri-apps/api/core";
     import appState from "$lib/AppState.svelte";
     import { toaster } from "$lib/stores/toaster.svelte";
-    
 
     // SuperForms props
-    let {form, errors, enhance, submitting, constraints} = $props();
+    let { form, errors, enhance, submitting, constraints } = $props();
 
     async function handleSavePassword() {
+        toaster.info("Creating account..."); // Immediate feedback
         try {
-            await invoke("save_master_password", { 
-                password: $form.password, 
-                private_key: $form.private_key || "" 
-            });
-            await appState.refreshAuthState();
-            toaster.success("Password saved successfully!");
+            await appState.register($form.username, $form.password);
+            toaster.success("Account created successfully!");
             goto("/protected/secrets");
-        } catch (e) {
-            console.error("Error saving password:", e);
-            toaster.error("Error saving password");
+        } catch (e: any) {
+            console.error("Error creating account:", e);
+            if (JSON.stringify(e).includes("User already exists")) {
+                toaster.error("Username already taken");
+            } else {
+                toaster.error("Error creating account");
+            }
         }
     }
 </script>
 
 <Section name="crudcreateform">
     <h2 class="mb-4 text-xl font-bold text-gray-900 dark:text-white">
-        Initial Settings
+        Create Account
     </h2>
-    
-    <form use:enhance on:submit|preventDefault={handleSavePassword}>
+
+    <form on:submit|preventDefault={handleSavePassword}>
         <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
             <div class="sm:col-span-2">
-                <Label for="password" class="mb-2">Main Password</Label>
+                <Label for="username" class="mb-2">Username</Label>
+                <Input
+                    type="text"
+                    id="username"
+                    placeholder="username"
+                    bind:value={$form.username}
+                    name="username"
+                    required
+                    {...constraints.username}
+                    color={$errors.username ? "red" : undefined}
+                />
+                {#if $errors.username}
+                    <Alert color="red" class="mt-2">
+                        <span class="font-medium">{$errors.username}</span>
+                    </Alert>
+                {/if}
+            </div>
+
+            <div class="sm:col-span-2">
+                <Label for="password" class="mb-2">Password</Label>
                 <Input
                     type="password"
                     id="password"
@@ -51,9 +79,11 @@
                     </Alert>
                 {/if}
             </div>
-            
+
             <div class="sm:col-span-2">
-                <Label for="password_confirmation" class="mb-2">Confirm Password</Label>
+                <Label for="password_confirmation" class="mb-2"
+                    >Confirm Password</Label
+                >
                 <Input
                     type="password"
                     id="password_confirmation"
@@ -66,38 +96,23 @@
                 />
                 {#if $errors.password_confirmation}
                     <Alert color="red" class="mt-2">
-                        <span class="font-medium">{$errors.password_confirmation}</span>
+                        <span class="font-medium"
+                            >{$errors.password_confirmation}</span
+                        >
                     </Alert>
                 {/if}
             </div>
-            
-            <div class="sm:col-span-2">
-                <Label for="private_key" class="mb-2">Private Key <small>(optional)</small></Label>
-                <Textarea
-                    id="private_key"
-                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----
-••••••••
-••••••••
-••••••••
-••••••••
------END OPENSSH PRIVATE KEY-----"
-                    rows={6}
-                    name="private_key"
-                    bind:value={$form.private_key}
-                    {...constraints.private_key}
-                />
-            </div>
-            
+
             <Button type="submit" class="w-32" disabled={$submitting}>
                 {#if $submitting}
                     <span class="inline-block mr-2">Loading...</span>
                 {:else}
-                    Let's Go!
+                    Sign Up
                 {/if}
             </Button>
         </div>
     </form>
-    
+
     <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mt-5">
         Login instead <A href="/account/log_in">Access</A>
     </div>

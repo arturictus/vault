@@ -7,6 +7,9 @@
     // Define the setup form schema directly in the client-side
     const setupSchema = z
         .object({
+            username: z
+                .string()
+                .min(3, { message: "Username must be at least 3 characters" }),
             password: z
                 .string()
                 .min(8, { message: "Password must be at least 8 characters" })
@@ -22,7 +25,7 @@
                     message: "Password must contain at least one number",
                 }),
             password_confirmation: z.string(),
-            private_key: z.string().optional(),
+            // private_key: z.string().optional(),
         })
         .refine((data) => data.password === data.password_confirmation, {
             message: "Passwords don't match",
@@ -32,9 +35,10 @@
     // Create the form with initial data
     const { form, errors, enhance, submitting, constraints } = superForm(
         {
+            username: "",
             password: "",
             password_confirmation: "",
-            private_key: "",
+            // private_key: "",
         },
         {
             SPA: true,
