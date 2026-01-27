@@ -1,31 +1,30 @@
 //! Error types for both the original application and the secure session management system
 
-use thiserror::Error;
-use std::sync::PoisonError;
 use std::sync::MutexGuard;
+use std::sync::PoisonError;
+use thiserror::Error;
 
 // Original application error types
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Error, Debug, serde::Serialize)]
 pub enum Error {
-  TauriInit(String),
-  Secrets(String),
-  Custom(String),
-  Encryption(String),
-  Io(String),
-  StateLock(String),
-  MasterPassword(String),
-  YubiKeyError(String),
+    TauriInit(String),
+    Secrets(String),
+    Custom(String),
+    Encryption(String),
+    Io(String),
+    StateLock(String),
+    MasterPassword(String),
+    YubiKeyError(String),
+    Auth(String),
+    Session(String),
 }
 
 impl core::fmt::Display for Error {
-	fn fmt(
-		&self,
-		fmt: &mut core::fmt::Formatter,
-	) -> core::result::Result<(), core::fmt::Error> {
-		write!(fmt, "{self:?}")
-	}
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+        write!(fmt, "{self:?}")
+    }
 }
 
 impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
@@ -52,6 +51,18 @@ impl From<crate::secrets::Error> for Error {
     }
 }
 
+impl From<SessionError> for Error {
+    fn from(e: SessionError) -> Self {
+        Error::Session(e.to_string())
+    }
+}
+
+impl From<AuthError> for Error {
+    fn from(e: AuthError) -> Self {
+        Error::Auth(e.to_string())
+    }
+}
+
 // New secure session management error types
 
 /// Main error type for session operations
@@ -59,28 +70,28 @@ impl From<crate::secrets::Error> for Error {
 pub enum SessionError {
     #[error("Session not found: {session_id}")]
     SessionNotFound { session_id: String },
-    
+
     #[error("Session expired: {session_id}")]
     SessionExpired { session_id: String },
-    
+
     #[error("Invalid session token")]
     InvalidToken,
-    
+
     #[error("Session creation failed: {reason}")]
     CreationFailed { reason: String },
-    
+
     #[error("Session validation failed: {reason}")]
     ValidationFailed { reason: String },
-    
+
     #[error("Cryptographic error: {0}")]
     CryptoError(#[from] CryptoError),
-    
+
     #[error("Authentication error: {0}")]
     AuthError(#[from] AuthError),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
-    
+
     #[error("Internal error: {0}")]
     Internal(#[from] anyhow::Error),
 }
@@ -90,19 +101,22 @@ pub enum SessionError {
 pub enum AuthError {
     #[error("Invalid credentials")]
     InvalidCredentials,
-    
+
     #[error("User not found: {username}")]
     UserNotFound { username: String },
-    
+
     #[error("Password verification failed")]
     PasswordVerificationFailed,
-    
+
     #[error("Account locked: {username}")]
     AccountLocked { username: String },
-    
+
     #[error("Too many failed attempts")]
     TooManyAttempts,
-    
+
+    #[error("User already exists: {username}")]
+    UserAlreadyExists { username: String },
+
     #[error("Cryptographic error: {0}")]
     CryptoError(#[from] CryptoError),
 }
@@ -112,27 +126,30 @@ pub enum AuthError {
 pub enum CryptoError {
     #[error("Key derivation failed: {reason}")]
     KeyDerivationFailed { reason: String },
-    
+
     #[error("Encryption failed: {reason}")]
     EncryptionFailed { reason: String },
-    
+
     #[error("Decryption failed: {reason}")]
     DecryptionFailed { reason: String },
-    
+
     #[error("Invalid key length: expected {expected}, got {actual}")]
     InvalidKeyLength { expected: usize, actual: usize },
-    
+
     #[error("Random number generation failed")]
     RandomGenerationFailed,
-    
+
     #[error("Hash verification failed")]
     HashVerificationFailed,
-    
+
     #[error("Argon2 error: {0}")]
     Argon2Error(String),
-    
+
     #[error("AES-GCM error: {0}")]
     AesGcmError(String),
+
+    #[error("Internal error: {0}")]
+    Internal(#[from] anyhow::Error),
 }
 
 /// Security-related errors
@@ -140,10 +157,10 @@ pub enum CryptoError {
 pub enum SecurityError {
     #[error("Memory protection failed: {reason}")]
     MemoryProtectionFailed { reason: String },
-    
+
     #[error("Secure wipe failed")]
     SecureWipeFailed,
-    
+
     #[error("Access denied: {reason}")]
     AccessDenied { reason: String },
 }

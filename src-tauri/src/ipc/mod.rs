@@ -1,11 +1,14 @@
+pub mod auth;
 mod encrypt;
 mod secrets;
 mod yubikey;
+
+pub use auth::*;
 pub use encrypt::*;
 pub use secrets::*;
 pub use yubikey::*;
 
-use crate::{TauriState, Result};
+use crate::{Result, TauriState};
 
 #[tauri::command]
 pub fn is_authenticated(state: TauriState) -> Result<bool> {
